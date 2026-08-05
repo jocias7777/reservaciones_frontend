@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Action, PermissionModule } from '~/types'
+import type { Action, ActionCategory, PermissionModule } from '~/types'
 
 /**
  * Lista de tarjetas de módulo de la matriz de permisos.
@@ -10,12 +10,15 @@ import type { Action, PermissionModule } from '~/types'
 const props = withDefaults(defineProps<{
   modules: PermissionModule[]
   actions: Action[]
+  /** Categorías con las que se agrupan las acciones dentro de cada tarjeta. */
+  categories?: ActionCategory[]
   /** Estado por módulo y acción: `{ [moduleId]: { [actionId]: boolean } }`. */
   values: Record<string, Record<string, boolean>>
   /** Solo en permisos de usuario: lo que concede su rol, para marcar excepciones. */
   inherited?: Record<string, Record<string, boolean>> | null
   disabled?: boolean
 }>(), {
+  categories: () => [],
   inherited: null,
   disabled: false
 })
@@ -33,6 +36,7 @@ const emit = defineEmits<{
       :key="module.id"
       :module="module"
       :actions="props.actions"
+      :categories="props.categories"
       :values="props.values[module.id] ?? {}"
       :inherited="props.inherited?.[module.id] ?? null"
       :disabled="props.disabled"

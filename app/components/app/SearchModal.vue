@@ -74,7 +74,11 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
         { label: 'Agregar usuario', icon: 'i-lucide-user-round-plus', to: '/usuarios/nuevo' },
         { label: 'Agregar rol', icon: 'i-lucide-shield-plus', to: '/roles/nuevo' },
         { label: 'Módulos del sistema', icon: 'i-lucide-key-round', to: '/roles/modulos' },
-        { label: 'Agregar módulo', icon: 'i-lucide-package-plus', to: '/roles/modulos/nuevo' }
+        { label: 'Agregar módulo', icon: 'i-lucide-package-plus', to: '/roles/modulos/nuevo' },
+        { label: 'Acciones', icon: 'i-lucide-circle-plus', to: '/roles/acciones' },
+        { label: 'Agregar acción', icon: 'i-lucide-circle-plus', to: '/roles/acciones/nueva' },
+        { label: 'Categorías de acciones', icon: 'i-lucide-shapes', to: '/roles/categorias' },
+        { label: 'Agregar categoría', icon: 'i-lucide-shapes', to: '/roles/categorias/nueva' }
       ]
     }
   ]

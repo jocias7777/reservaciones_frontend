@@ -1,6 +1,7 @@
 import type {
   AdvancedQuery,
   ApiEnvelope,
+  AvailableActions,
   CreatePermissionModulePayload,
   PaginatedResult,
   PermissionModule
@@ -20,6 +21,15 @@ export function useModulesApi() {
   return {
     /** `GET /permissions` — lista completa; base de la matriz de permisos. */
     list: () => listOrEmpty(unwrap(api<ApiEnvelope<PermissionModule[]>>('/permissions'))),
+
+    /**
+     * `GET /permissions/available-actions` — qué acciones comprueba cada módulo.
+     *
+     * Con esto la matriz ofrece por módulo solo lo que ese módulo implementa, en
+     * vez de las nueve acciones en todos.
+     */
+    availableActions: () =>
+      unwrap(api<ApiEnvelope<AvailableActions>>('/permissions/available-actions')),
 
     /** `QUERY /permissions` — búsqueda avanzada (sin expands). */
     query: (query: AdvancedQuery = {}) =>

@@ -10,9 +10,16 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 export function useAppNavigation() {
   const route = useRoute()
 
-  /** `/roles/modulos` también empieza por `/roles`: se resuelve del más específico al más general. */
+  /**
+   * `/roles/modulos`, `/roles/acciones` y `/roles/categorias` también empiezan
+   * por `/roles`: se resuelve del más específico al más general.
+   */
   const isModulos = computed(() => route.path.startsWith('/roles/modulos'))
-  const isRoles = computed(() => route.path.startsWith('/roles') && !isModulos.value)
+  const isAcciones = computed(() => route.path.startsWith('/roles/acciones'))
+  const isCategorias = computed(() => route.path.startsWith('/roles/categorias'))
+  const isRoles = computed(() =>
+    route.path.startsWith('/roles') && !isModulos.value && !isAcciones.value && !isCategorias.value
+  )
   const isUsuarios = computed(() => route.path.startsWith('/usuarios'))
 
   const items = computed<NavigationMenuItem[]>(() => [
@@ -42,6 +49,20 @@ export function useAppNavigation() {
           description: 'Zonas sobre las que se dan permisos',
           to: '/roles/modulos',
           active: isModulos.value
+        },
+        {
+          label: 'Acciones',
+          icon: 'i-lucide-circle-plus',
+          description: 'Lo que se permite o se niega en cada módulo',
+          to: '/roles/acciones',
+          active: isAcciones.value
+        },
+        {
+          label: 'Categorías de acciones',
+          icon: 'i-lucide-shapes',
+          description: 'Bloques en los que se agrupan las acciones',
+          to: '/roles/categorias',
+          active: isCategorias.value
         }
       ]
     }

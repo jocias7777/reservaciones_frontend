@@ -13,6 +13,11 @@ export interface UsePermissionMatrixOptions {
  * diferencia entre ambos es exactamente lo que hay que guardar, así que no hace
  * falta llamar a la API en cada interruptor.
  *
+ * Todos los módulos ofrecen todo el catálogo de acciones: así una acción recién
+ * dada de alta aparece en el acto donde se espera. Que una combinación restrinja
+ * algo de verdad depende de que el backend proteja alguna ruta con ese código,
+ * y eso se consulta en la pantalla de acciones.
+ *
  * Sirve igual para roles (permisos del rol) y para usuarios (permiso efectivo,
  * del que luego se derivan las excepciones).
  */

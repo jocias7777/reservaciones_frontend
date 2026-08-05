@@ -27,7 +27,7 @@ export function apiErrorMessage(error: unknown, fallback = 'Ocurrió un error in
 }
 
 /** Código HTTP de un error de `$fetch`, si lo hubo. */
-function apiErrorStatus(error: unknown): number | undefined {
+export function apiErrorStatus(error: unknown): number | undefined {
   return (error as FetchError)?.response?.status
 }
 

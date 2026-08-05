@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import type { Action, PermissionModule } from '~/types'
+import type { Action, ActionCategory, PermissionModule } from '~/types'
 
 /**
  * Tarjeta de un módulo con sus interruptores de acción.
  *
- * Las 9 acciones se reparten en tres bloques (consulta / gestión / eliminación):
- * con la lista plana cuesta distinguir "Eliminar" de "Eliminar masivo
- * permanente", que es justo la diferencia que más importa no equivocarse.
+ * Las acciones se reparten en bloques según su categoría (Consulta / Gestión /
+ * Eliminación...): con la lista plana cuesta distinguir "Eliminar" de "Eliminar
+ * masivo permanente", que es justo la diferencia que más importa no equivocarse.
+ *
+ * Recibe solo las acciones que el módulo implementa de verdad, no el catálogo
+ * entero.
  */
 const props = withDefaults(defineProps<{
   module: PermissionModule
   actions: Action[]
+  /** Categorías con las que se agrupan las acciones (`sa_category_permissions`). */
+  categories?: ActionCategory[]
   /** Estado actual por `actionId`. */
   values: Record<string, boolean>
   /**
@@ -21,6 +26,7 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   defaultOpen?: boolean
 }>(), {
+  categories: () => [],
   inherited: null,
   disabled: false,
   defaultOpen: true
@@ -33,7 +39,7 @@ const emit = defineEmits<{
 
 const open = ref(props.defaultOpen)
 
-const groups = computed(() => groupActions(props.actions))
+const groups = computed(() => groupActions(props.actions, props.categories))
 
 const activeCount = computed(() => props.actions.filter(action => props.values[action.id]).length)
 const allSelected = computed(() => props.actions.length > 0 && activeCount.value === props.actions.length)
@@ -106,21 +112,32 @@ const overrideCount = computed(() =>
       </div>
 
       <!--
-        Un bloque de acciones por columna. Las columnas se ajustan a su contenido
-        y el conjunto queda centrado en la tarjeta, separado por una línea para
-        que se lean como tres grupos distintos.
+        Un bloque de acciones por categoría, como mucho cuatro por fila.
 
-        El salto es directo de una columna a tres (sin paso intermedio de dos) a
-        propósito: así en pantallas anchas siempre hay una única fila y el
-        separador de `first:` cae justo donde debe.
+        Es flex y no grid a propósito: con `grid-cols-4` las columnas existen
+        aunque estén vacías, así que tres categorías quedaban pegadas a la
+        izquierda con un hueco muerto a la derecha. Con `flex-wrap` +
+        `justify-center` solo ocupan sitio los bloques que hay, y la fila —esté
+        llena o no— queda centrada en la tarjeta.
+
+        El ancho se fija en el propio bloque (un cuarto menos su parte del
+        hueco), que es lo que mantiene los cuatro por fila y todos a la par
+        aunque uno tenga siete acciones y otro ninguna.
+
+        El separador se quita al primero DE CADA FILA (`nth-child(4n+1)`), no
+        solo al primero de todos, porque las categorías se administran y pueden
+        ser tantas como haga falta. Se le quita la línea pero NO el hueco: el
+        ancho incluye el relleno (`border-box`), así que dejarlo sin relleno le
+        daría al primer bloque de cada fila más sitio para su contenido que a
+        los demás.
       -->
       <div
-        class="grid gap-y-8 px-4 pb-5 lg:grid-cols-[repeat(3,minmax(0,auto))] lg:justify-center lg:gap-x-10 xl:gap-x-16"
+        class="flex flex-wrap justify-center gap-x-6 gap-y-8 px-4 pb-5 lg:gap-x-8"
       >
         <div
           v-for="group in groups"
-          :key="group.id"
-          class="space-y-3 lg:border-s lg:border-default lg:ps-10 lg:first:border-s-0 lg:first:ps-0"
+          :key="group.id || 'sin-categoria'"
+          class="min-w-0 w-full space-y-3 sm:w-[calc(50%-0.75rem)] lg:w-[calc(25%-1.5rem)] lg:border-s lg:border-default lg:ps-8 lg:[&:nth-child(4n+1)]:border-s-0"
         >
           <div class="flex items-center gap-2">
             <UIcon
@@ -131,11 +148,22 @@ const overrideCount = computed(() =>
               <p class="text-xs font-semibold uppercase tracking-wide text-muted">
                 {{ group.label }}
               </p>
-              <p class="text-xs text-dimmed">
+              <p
+                v-if="group.description"
+                class="text-xs text-dimmed"
+              >
                 {{ group.description }}
               </p>
             </div>
           </div>
+
+          <!-- Categoría recién creada: se ve que existe, aunque aún esté vacía. -->
+          <p
+            v-if="!group.actions.length"
+            class="text-sm text-dimmed"
+          >
+            Sin acciones todavía
+          </p>
 
           <div class="space-y-2.5">
             <div

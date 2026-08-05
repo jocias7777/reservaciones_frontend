@@ -1,11 +1,11 @@
-import type { Action, PermissionModule } from '~/types'
+import type { Action, ActionCategory, PermissionModule } from '~/types'
 
 /**
  * Presentación de la matriz de permisos: orden, agrupación e iconos.
  *
  * Nada de esto altera los datos: el backend es la fuente de verdad de qué
- * módulos y acciones existen. Aquí solo se decide cómo se ven y en qué orden,
- * con reservas razonables para códigos que aún no conocemos.
+ * módulos, acciones y categorías existen. Aquí solo se decide cómo se ven y en
+ * qué orden, con reservas razonables para códigos que aún no conocemos.
  */
 
 /** Orden canónico de las acciones (el mismo de `app/seeds.py::ACTIONS`). */
@@ -50,50 +50,36 @@ const ACTION_HINTS: Record<string, string> = {
 /** Acciones cuyo efecto no se puede revertir: se marcan visualmente. */
 const IRREVERSIBLE_ACTIONS = new Set(['hard_delete', 'bulk_hard_delete'])
 
-type ActionGroupId = 'consulta' | 'gestion' | 'eliminacion'
+/**
+ * Las acciones son muchas para leerlas de golpe, así que en la tarjeta de cada
+ * módulo se muestran repartidas en bloques por lo que hacen. Esos bloques son
+ * las categorías de `sa_category_permissions`, y todo lo suyo —título,
+ * descripción, icono y orden— sale de la base de datos y se administra desde
+ * `/roles/categorias`. Aquí solo queda el valor por defecto de una categoría a
+ * la que todavía no se le haya elegido icono.
+ */
 
 interface ActionGroupMeta {
-  id: ActionGroupId
+  /** Id de la categoría, o cadena vacía para el bloque «sin categoría». */
+  id: string
   label: string
   description: string
   icon: string
 }
 
-/**
- * Las 9 acciones son muchas para leerlas de golpe, así que en la tarjeta de cada
- * módulo se muestran repartidas en tres bloques por lo que hacen.
- */
-const ACTION_GROUPS: ActionGroupMeta[] = [
-  {
-    id: 'consulta',
-    label: 'Consulta',
-    description: 'Ver y extraer información',
-    icon: 'i-lucide-eye'
-  },
-  {
-    id: 'gestion',
-    label: 'Gestión',
-    description: 'Crear y modificar registros',
-    icon: 'i-lucide-pencil'
-  },
-  {
-    id: 'eliminacion',
-    label: 'Eliminación',
-    description: 'Quitar registros del sistema',
-    icon: 'i-lucide-trash-2'
-  }
-]
+/** Icono de una categoría sin icono elegido, y del bloque «sin categoría». */
+export const DEFAULT_CATEGORY_ICON = 'i-lucide-shapes'
 
-const ACTION_GROUP_BY_CODE: Record<string, ActionGroupId> = {
-  read: 'consulta',
-  export: 'consulta',
-  print: 'consulta',
-  create: 'gestion',
-  update: 'gestion',
-  delete: 'eliminacion',
-  bulk_delete: 'eliminacion',
-  hard_delete: 'eliminacion',
-  bulk_hard_delete: 'eliminacion'
+/** Bloque de las acciones que no tienen categoría asignada. */
+const UNCATEGORIZED: ActionGroupMeta = {
+  id: '',
+  label: 'Otras acciones',
+  description: 'Sin categoría asignada',
+  icon: DEFAULT_CATEGORY_ICON
+}
+
+export function categoryIcon(category: Pick<ActionCategory, 'icon'>): string {
+  return category.icon || DEFAULT_CATEGORY_ICON
 }
 
 /** Iconos por módulo conocido; el resto usa uno neutro. */
@@ -131,18 +117,54 @@ export function sortActions(actions: Action[]): Action[] {
   return [...actions].sort((a, b) => weight(a.code) - weight(b.code) || a.code.localeCompare(b.code))
 }
 
+/**
+ * Ordena las categorías por el orden configurado en cada una.
+ *
+ * El nombre desempata: dos categorías pueden compartir `sort_order` (nada lo
+ * impide en la tabla) y sin desempate quedarían en un orden imprevisible.
+ */
+export function sortCategories(categories: ActionCategory[]): ActionCategory[] {
+  return [...categories].sort((a, b) =>
+    a.sort_order - b.sort_order || a.name.localeCompare(b.name)
+  )
+}
+
 export interface ActionGroup extends ActionGroupMeta {
   actions: Action[]
 }
 
-/** Reparte las acciones en los tres bloques, descartando los bloques vacíos. */
-export function groupActions(actions: Action[]): ActionGroup[] {
+/**
+ * Reparte las acciones en un bloque por categoría.
+ *
+ * Sale un bloque por cada categoría que exista, AUNQUE todavía no tenga
+ * acciones: si alguien da de alta una categoría, tiene que verla aparecer donde
+ * se usan, no quedarse dudando si se guardó. Los bloques vacíos se marcan como
+ * tales en la tarjeta.
+ *
+ * Las acciones sin categoría —o con una categoría que ya no existe— no se
+ * pierden: caen en un bloque «Otras acciones» al final, que sí desaparece cuando
+ * no hay ninguna, porque ese bloque no lo creó nadie. Si no llegan categorías
+ * (por ejemplo, porque la cuenta no puede leerlas) todo queda ahí, que es
+ * exactamente la lista completa sin agrupar.
+ */
+export function groupActions(actions: Action[], categories: ActionCategory[] = []): ActionGroup[] {
   const sorted = sortActions(actions)
+  const known = new Set(categories.map(category => category.id))
 
-  return ACTION_GROUPS.map(group => ({
-    ...group,
-    actions: sorted.filter(action => (ACTION_GROUP_BY_CODE[action.code] ?? 'gestion') === group.id)
-  })).filter(group => group.actions.length > 0)
+  const groups: ActionGroup[] = sortCategories(categories).map(category => ({
+    id: category.id,
+    label: category.name,
+    description: category.description ?? '',
+    icon: categoryIcon(category),
+    actions: sorted.filter(action => action.category_id === category.id)
+  }))
+
+  const orphans = sorted.filter(action => !action.category_id || !known.has(action.category_id))
+  if (orphans.length) {
+    groups.push({ ...UNCATEGORIZED, actions: orphans })
+  }
+
+  return groups
 }
 
 /** Clave estable de una celda módulo × acción. */

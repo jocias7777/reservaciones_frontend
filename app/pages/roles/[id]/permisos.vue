@@ -9,24 +9,29 @@ const roleId = computed(() => String(route.params.id))
 const rolesApi = useRolesApi()
 const modulesApi = useModulesApi()
 const actionsApi = useActionsApi()
+const actionCategoriesApi = useActionCategoriesApi()
 const rolePermissionsApi = useRolePermissionsApi()
 const notify = useNotify()
 
 /**
- * Los cuatro datos que necesita la matriz se piden juntos: el rol, el catálogo de
- * módulos, el de acciones y las combinaciones ya concedidas.
+ * Todo lo que necesita la matriz se pide junto: el rol, el catálogo de módulos,
+ * el de acciones, las categorías con las que se agrupan y las combinaciones ya
+ * concedidas.
  */
 const { data, status, error, refresh } = useAsyncData(
   () => `role-permissions:${roleId.value}`,
   async () => {
-    const [role, modules, actions, rows] = await Promise.all([
+    const [role, modules, actions, categories, rows] = await Promise.all([
       rolesApi.get(roleId.value),
       modulesApi.list(),
       actionsApi.list(),
+      // Sin categorías la matriz sigue siendo usable (las acciones caen en un
+      // único bloque), así que no se deja caer la pantalla entera por esto.
+      actionCategoriesApi.list().catch(() => []),
       rolePermissionsApi.listByRole(roleId.value)
     ])
 
-    return { role, modules, actions, rows }
+    return { role, modules, actions, categories, rows }
   },
   { server: false, watch: [roleId] }
 )
@@ -191,6 +196,7 @@ onBeforeRouteLeave(() => {
         v-else
         :modules="matrix.modules.value"
         :actions="matrix.actions.value"
+        :categories="data.categories"
         :values="matrix.valuesByModule.value"
         :disabled="saving"
         @toggle="(moduleId, actionId, value) => matrix.set(permissionKey(moduleId, actionId), value)"
