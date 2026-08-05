@@ -9,13 +9,14 @@ import type { UserFormPayload, UserWithRelations } from '~/types'
  * perfil por separado y la página decide contra qué endpoints guardarlos.
  */
 const props = withDefaults(defineProps<{
+  /** Id del `<form>`: lo usa el botón de guardar, que vive en la cabecera. */
+  id?: string
   mode?: 'create' | 'edit'
   user?: UserWithRelations | null
-  loading?: boolean
 }>(), {
+  id: 'user-form',
   mode: 'create',
-  user: null,
-  loading: false
+  user: null
 })
 
 const emit = defineEmits<{ submit: [payload: UserFormPayload] }>()
@@ -179,6 +180,7 @@ function onSubmit() {
 
 <template>
   <UForm
+    :id="props.id"
     :state="state"
     :validate="validate"
     class="space-y-6"
@@ -389,16 +391,5 @@ function onSubmit() {
         />
       </UFormField>
     </UPageCard>
-
-    <div class="flex items-center justify-end gap-3">
-      <slot name="secondary-action" />
-
-      <UButton
-        type="submit"
-        :label="isCreate ? 'Crear usuario' : 'Guardar cambios'"
-        :icon="isCreate ? 'i-lucide-user-round-plus' : 'i-lucide-save'"
-        :loading="props.loading"
-      />
-    </div>
   </UForm>
 </template>

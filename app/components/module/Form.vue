@@ -8,8 +8,11 @@ import type { CreatePermissionModulePayload } from '~/types'
  * El `code` es lo que compara el backend en `require_permission('<code>', ...)`,
  * así que se valida con el mismo formato que usan los módulos existentes.
  */
-const props = withDefaults(defineProps<{ loading?: boolean }>(), {
-  loading: false
+const props = withDefaults(defineProps<{
+  /** Id del `<form>`: lo usa el botón de guardar, que vive en la cabecera. */
+  id?: string
+}>(), {
+  id: 'module-form'
 })
 
 const emit = defineEmits<{ submit: [payload: CreatePermissionModulePayload] }>()
@@ -50,6 +53,7 @@ function onSubmit() {
 
 <template>
   <UForm
+    :id="props.id"
     :state="state"
     :validate="validate"
     class="space-y-6"
@@ -98,16 +102,5 @@ function onSubmit() {
         </UFormField>
       </div>
     </UPageCard>
-
-    <div class="flex items-center justify-end gap-3">
-      <slot name="secondary-action" />
-
-      <UButton
-        type="submit"
-        label="Crear módulo"
-        icon="i-lucide-package-plus"
-        :loading="props.loading"
-      />
-    </div>
   </UForm>
 </template>

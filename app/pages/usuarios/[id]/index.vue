@@ -24,6 +24,9 @@ useSeoMeta({
 
 const saving = ref(false)
 
+/** Id del `<form>`; el botón de guardar vive en la cabecera y lo referencia. */
+const FORM_ID = 'user-form'
+
 async function onSubmit(payload: UserFormPayload) {
   saving.value = true
 
@@ -53,17 +56,28 @@ async function onSubmit(payload: UserFormPayload) {
 <template>
   <UContainer class="py-6">
     <div class="mx-auto w-full max-w-3xl space-y-4">
-      <UPageHeader
+      <BasePageHeader
         :title="fullName(user?.profile) ?? user?.username ?? user?.email ?? 'Usuario'"
         :description="user?.email"
-        :links="[{
-          label: 'Permisos del usuario',
-          icon: 'i-lucide-key-round',
-          to: `/usuarios/${userId}/permisos`,
-          color: 'neutral',
-          variant: 'outline'
-        }]"
-      />
+      >
+        <template #actions>
+          <UButton
+            label="Permisos del usuario"
+            icon="i-lucide-list-checks"
+            color="neutral"
+            variant="outline"
+            :to="`/usuarios/${userId}/permisos`"
+          />
+          <UButton
+            label="Guardar cambios"
+            icon="i-lucide-save"
+            type="submit"
+            :form="FORM_ID"
+            :loading="saving"
+            :disabled="!user"
+          />
+        </template>
+      </BasePageHeader>
 
       <BaseErrorAlert
         :error="error"
@@ -81,21 +95,11 @@ async function onSubmit(payload: UserFormPayload) {
 
       <UserForm
         v-else
+        :id="FORM_ID"
         mode="edit"
         :user="user"
-        :loading="saving"
         @submit="onSubmit"
-      >
-        <template #secondary-action>
-          <UButton
-            label="Volver a usuarios"
-            color="neutral"
-            variant="soft"
-            icon="i-lucide-arrow-left"
-            to="/usuarios"
-          />
-        </template>
-      </UserForm>
+      />
     </div>
   </UContainer>
 </template>

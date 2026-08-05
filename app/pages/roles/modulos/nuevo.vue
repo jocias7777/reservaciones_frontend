@@ -12,6 +12,9 @@ const notify = useNotify()
 
 const saving = ref(false)
 
+/** Id del `<form>`; el botón de guardar vive en la cabecera y lo referencia. */
+const FORM_ID = 'module-form'
+
 async function onSubmit(payload: CreatePermissionModulePayload) {
   saving.value = true
 
@@ -32,24 +35,31 @@ async function onSubmit(payload: CreatePermissionModulePayload) {
 <template>
   <UContainer class="py-6">
     <div class="mx-auto w-full max-w-2xl space-y-4">
-      <UPageHeader
+      <BasePageHeader
         title="Agregar módulo"
         description="Aparecerá en los permisos de cada rol."
-      />
-
-      <ModuleForm
-        :loading="saving"
-        @submit="onSubmit"
       >
-        <template #secondary-action>
+        <template #actions>
           <UButton
             label="Cancelar"
             color="neutral"
             variant="soft"
             to="/roles/modulos"
           />
+          <UButton
+            label="Crear módulo"
+            icon="i-lucide-package-plus"
+            type="submit"
+            :form="FORM_ID"
+            :loading="saving"
+          />
         </template>
-      </ModuleForm>
+      </BasePageHeader>
+
+      <ModuleForm
+        :id="FORM_ID"
+        @submit="onSubmit"
+      />
     </div>
   </UContainer>
 </template>

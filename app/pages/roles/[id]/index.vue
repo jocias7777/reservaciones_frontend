@@ -21,6 +21,9 @@ useSeoMeta({
 
 const saving = ref(false)
 
+/** Id del `<form>`; el botón de guardar vive en la cabecera y lo referencia. */
+const FORM_ID = 'role-form'
+
 async function onSubmit(payload: { name: string, description: string }) {
   saving.value = true
 
@@ -41,17 +44,28 @@ async function onSubmit(payload: { name: string, description: string }) {
 <template>
   <UContainer class="py-6">
     <div class="mx-auto w-full max-w-2xl space-y-4">
-      <UPageHeader
+      <BasePageHeader
         :title="role?.name ?? 'Rol'"
         :description="role?.description ?? undefined"
-        :links="[{
-          label: 'Permisos',
-          icon: 'i-lucide-key-round',
-          to: `/roles/${roleId}/permisos`,
-          color: 'neutral',
-          variant: 'outline'
-        }]"
-      />
+      >
+        <template #actions>
+          <UButton
+            label="Permisos"
+            icon="i-lucide-list-checks"
+            color="neutral"
+            variant="outline"
+            :to="`/roles/${roleId}/permisos`"
+          />
+          <UButton
+            label="Guardar cambios"
+            icon="i-lucide-save"
+            type="submit"
+            :form="FORM_ID"
+            :loading="saving"
+            :disabled="!role"
+          />
+        </template>
+      </BasePageHeader>
 
       <BaseErrorAlert
         :error="error"
@@ -66,21 +80,10 @@ async function onSubmit(payload: { name: string, description: string }) {
 
       <RoleForm
         v-else
-        mode="edit"
+        :id="FORM_ID"
         :role="role"
-        :loading="saving"
         @submit="onSubmit"
-      >
-        <template #secondary-action>
-          <UButton
-            label="Volver a roles"
-            color="neutral"
-            variant="soft"
-            icon="i-lucide-arrow-left"
-            to="/roles"
-          />
-        </template>
-      </RoleForm>
+      />
     </div>
   </UContainer>
 </template>

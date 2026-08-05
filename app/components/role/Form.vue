@@ -7,13 +7,12 @@ import type { Role } from '~/types'
  * cualquier campo que no sea uno de esos dos (`RoleSchema.validate_create`).
  */
 const props = withDefaults(defineProps<{
-  mode?: 'create' | 'edit'
+  /** Id del `<form>`: lo usa el botón de guardar, que vive en la cabecera. */
+  id?: string
   role?: Role | null
-  loading?: boolean
 }>(), {
-  mode: 'create',
-  role: null,
-  loading: false
+  id: 'role-form',
+  role: null
 })
 
 const emit = defineEmits<{ submit: [payload: { name: string, description: string }] }>()
@@ -27,8 +26,6 @@ watch(() => props.role, (role) => {
   state.name = role?.name ?? ''
   state.description = role?.description ?? ''
 })
-
-const isCreate = computed(() => props.mode === 'create')
 
 function validate(current: typeof state): FormError[] {
   const errors: FormError[] = []
@@ -56,6 +53,7 @@ function onSubmit() {
 
 <template>
   <UForm
+    :id="props.id"
     :state="state"
     :validate="validate"
     class="space-y-6"
@@ -94,16 +92,5 @@ function onSubmit() {
         </UFormField>
       </div>
     </UPageCard>
-
-    <div class="flex items-center justify-end gap-3">
-      <slot name="secondary-action" />
-
-      <UButton
-        type="submit"
-        :label="isCreate ? 'Crear rol' : 'Guardar cambios'"
-        :icon="isCreate ? 'i-lucide-shield-plus' : 'i-lucide-save'"
-        :loading="props.loading"
-      />
-    </div>
   </UForm>
 </template>

@@ -36,11 +36,6 @@ const items = computed<DropdownMenuItem[][]>(() => [
     icon: photo.value ? undefined : 'i-lucide-circle-user'
   }],
   [{
-    label: user.value?.role ? `Rol: ${user.value.role}` : 'Sin rol asignado',
-    icon: 'i-lucide-shield',
-    disabled: true
-  }],
-  [{
     label: 'Mi cuenta',
     icon: 'i-lucide-user-round',
     to: user.value ? `/usuarios/${user.value.id}` : '/usuarios'

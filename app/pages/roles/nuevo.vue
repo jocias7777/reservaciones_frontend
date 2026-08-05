@@ -10,6 +10,9 @@ const notify = useNotify()
 
 const saving = ref(false)
 
+/** Id del `<form>`; el botón de guardar vive en la cabecera y lo referencia. */
+const FORM_ID = 'role-form'
+
 async function onSubmit(payload: { name: string, description: string }) {
   saving.value = true
 
@@ -31,25 +34,31 @@ async function onSubmit(payload: { name: string, description: string }) {
 <template>
   <UContainer class="py-6">
     <div class="mx-auto w-full max-w-2xl space-y-4">
-      <UPageHeader
+      <BasePageHeader
         title="Agregar rol"
         description="Al guardarlo pasarás a definir sus permisos."
-      />
-
-      <RoleForm
-        mode="create"
-        :loading="saving"
-        @submit="onSubmit"
       >
-        <template #secondary-action>
+        <template #actions>
           <UButton
             label="Cancelar"
             color="neutral"
             variant="soft"
             to="/roles"
           />
+          <UButton
+            label="Crear rol"
+            icon="i-lucide-shield-plus"
+            type="submit"
+            :form="FORM_ID"
+            :loading="saving"
+          />
         </template>
-      </RoleForm>
+      </BasePageHeader>
+
+      <RoleForm
+        :id="FORM_ID"
+        @submit="onSubmit"
+      />
     </div>
   </UContainer>
 </template>

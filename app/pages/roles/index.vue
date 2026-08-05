@@ -89,11 +89,14 @@ async function removeSelected() {
 
 <template>
   <UContainer class="py-6 space-y-4">
-    <UPageHeader
+    <BasePageHeader
       title="Roles"
       description="Cada rol define qué puede hacer un usuario."
-      :links="[{ ...addRole, color: 'primary', variant: 'solid' }]"
-    />
+    >
+      <template #actions>
+        <UButton v-bind="addRole" />
+      </template>
+    </BasePageHeader>
 
     <BaseErrorAlert
       :error="error"

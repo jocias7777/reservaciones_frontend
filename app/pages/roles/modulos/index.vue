@@ -50,11 +50,14 @@ const columns: TableColumn<PermissionModule>[] = [
 
 <template>
   <UContainer class="py-6 space-y-4">
-    <UPageHeader
+    <BasePageHeader
       title="Módulos del sistema"
       description="Zonas del sistema sobre las que se conceden permisos."
-      :links="[{ ...addModule, color: 'primary', variant: 'solid' }]"
-    />
+    >
+      <template #actions>
+        <UButton v-bind="addModule" />
+      </template>
+    </BasePageHeader>
 
     <BaseErrorAlert
       :error="error"

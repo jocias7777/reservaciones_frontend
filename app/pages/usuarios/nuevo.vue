@@ -12,6 +12,9 @@ const notify = useNotify()
 
 const saving = ref(false)
 
+/** Id del `<form>`; el botón de guardar vive en la cabecera y lo referencia. */
+const FORM_ID = 'user-form'
+
 async function onSubmit(payload: UserFormPayload) {
   saving.value = true
 
@@ -43,25 +46,32 @@ async function onSubmit(payload: UserFormPayload) {
 <template>
   <UContainer class="py-6">
     <div class="mx-auto w-full max-w-3xl space-y-4">
-      <UPageHeader
+      <BasePageHeader
         title="Agregar usuario"
         description="Registra la cuenta y, si quieres, su perfil."
-      />
-
-      <UserForm
-        mode="create"
-        :loading="saving"
-        @submit="onSubmit"
       >
-        <template #secondary-action>
+        <template #actions>
           <UButton
             label="Cancelar"
             color="neutral"
             variant="soft"
             to="/usuarios"
           />
+          <UButton
+            label="Crear usuario"
+            icon="i-lucide-user-round-plus"
+            type="submit"
+            :form="FORM_ID"
+            :loading="saving"
+          />
         </template>
-      </UserForm>
+      </BasePageHeader>
+
+      <UserForm
+        :id="FORM_ID"
+        mode="create"
+        @submit="onSubmit"
+      />
     </div>
   </UContainer>
 </template>
