@@ -71,9 +71,10 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
           icon: item.icon,
           to: item.to
         })),
-        { label: 'Nuevo usuario', icon: 'i-lucide-user-round-plus', to: '/usuarios/nuevo' },
-        { label: 'Nuevo rol', icon: 'i-lucide-shield-plus', to: '/roles/nuevo' },
-        { label: 'Módulos del sistema', icon: 'i-lucide-key-round', to: '/roles/modulos' }
+        { label: 'Agregar usuario', icon: 'i-lucide-user-round-plus', to: '/usuarios/nuevo' },
+        { label: 'Agregar rol', icon: 'i-lucide-shield-plus', to: '/roles/nuevo' },
+        { label: 'Módulos del sistema', icon: 'i-lucide-key-round', to: '/roles/modulos' },
+        { label: 'Agregar módulo', icon: 'i-lucide-package-plus', to: '/roles/modulos/nuevo' }
       ]
     }
   ]
@@ -132,7 +133,7 @@ watch(isOpen, (open) => {
         placeholder="Buscar usuarios, roles o acciones…"
         close
         :fuse="{ resultLimit: 20, matchAllWhenSearchEmpty: true }"
-        class="h-96"
+        class="h-96 max-h-[70vh]"
         @update:open="isOpen = $event"
       />
     </template>

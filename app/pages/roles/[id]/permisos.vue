@@ -10,7 +10,7 @@ const rolesApi = useRolesApi()
 const modulesApi = useModulesApi()
 const actionsApi = useActionsApi()
 const rolePermissionsApi = useRolePermissionsApi()
-const toast = useToast()
+const notify = useNotify()
 
 /**
  * Los cuatro datos que necesita la matriz se piden juntos: el rol, el catálogo de
@@ -54,21 +54,6 @@ watch(data, (value) => {
   if (!value) return
   matrix.setBaseline(value.rows.map(row => permissionKey(row.permission_id, row.action_id)))
 }, { immediate: true })
-
-/** Estado por módulo y acción, en el formato que espera la tarjeta. */
-const valuesByModule = computed(() => {
-  const result: Record<string, Record<string, boolean>> = {}
-
-  for (const module of matrix.modules.value) {
-    const actions: Record<string, boolean> = {}
-    for (const action of matrix.actions.value) {
-      actions[action.id] = matrix.isEnabled(permissionKey(module.id, action.id))
-    }
-    result[module.id] = actions
-  }
-
-  return result
-})
 
 const isSuperadmin = computed(() => data.value?.role.name === 'superadmin')
 
@@ -115,29 +100,14 @@ async function save() {
     const failed = results.filter(result => result.status === 'rejected')
 
     if (failed.length) {
-      toast.add({
-        title: 'Se guardó parcialmente',
-        description: `${failed.length} de ${added.length} permisos no se pudieron conceder: ${apiErrorMessage((failed[0] as PromiseRejectedResult).reason)}`,
-        color: 'warning',
-        icon: 'i-lucide-triangle-alert'
-      })
+      notify.warning('Se guardó parcialmente', `${failed.length} de ${added.length} permisos no se pudieron conceder: ${apiErrorMessage((failed[0] as PromiseRejectedResult).reason)}`)
     } else {
-      toast.add({
-        title: 'Permisos actualizados',
-        description: `«${data.value.role.name}» quedó con ${matrix.activeCount.value} permiso(s) activo(s).`,
-        color: 'success',
-        icon: 'i-lucide-circle-check'
-      })
+      notify.success('Permisos actualizados', `«${data.value.role.name}» quedó con ${matrix.activeCount.value} permiso(s) activo(s).`)
     }
 
     await refresh()
   } catch (err) {
-    toast.add({
-      title: 'No se pudieron guardar los permisos',
-      description: apiErrorMessage(err),
-      color: 'error',
-      icon: 'i-lucide-circle-alert'
-    })
+    notify.error(err, 'No se pudieron guardar los permisos')
   } finally {
     saving.value = false
   }
@@ -171,18 +141,14 @@ onBeforeRouteLeave(() => {
       }]"
     />
 
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="subtle"
-      icon="i-lucide-circle-alert"
+    <BaseErrorAlert
+      :error="error"
       title="No se pudieron cargar los permisos"
-      :description="apiErrorMessage(error)"
-      :actions="[{ label: 'Reintentar', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+      @retry="refresh"
     />
 
     <div
-      v-else-if="status === 'pending'"
+      v-if="status === 'pending'"
       class="space-y-4"
     >
       <USkeleton class="h-32 w-full" />
@@ -221,21 +187,15 @@ onBeforeRouteLeave(() => {
         :actions="[{ label: 'Ir a módulos', icon: 'i-lucide-arrow-right', to: '/roles/modulos' }]"
       />
 
-      <div
+      <PermissionModuleList
         v-else
-        class="space-y-4"
-      >
-        <PermissionModuleCard
-          v-for="module in matrix.modules.value"
-          :key="module.id"
-          :module="module"
-          :actions="matrix.actions.value"
-          :values="valuesByModule[module.id] ?? {}"
-          :disabled="saving"
-          @toggle="(actionId, value) => matrix.set(permissionKey(module.id, actionId), value)"
-          @toggle-module="value => matrix.setModule(module.id, value)"
-        />
-      </div>
+        :modules="matrix.modules.value"
+        :actions="matrix.actions.value"
+        :values="matrix.valuesByModule.value"
+        :disabled="saving"
+        @toggle="(moduleId, actionId, value) => matrix.set(permissionKey(moduleId, actionId), value)"
+        @toggle-module="matrix.setModule"
+      />
 
       <PermissionSaveBar
         :change-count="matrix.changeCount.value"

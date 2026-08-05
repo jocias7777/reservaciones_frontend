@@ -25,6 +25,13 @@ export interface PermissionModule {
   updated_at: string
 }
 
+/** `POST /permissions` exige `code` y `name`. */
+export interface CreatePermissionModulePayload {
+  code: string
+  name: string
+  description?: string | null
+}
+
 /** Acción disponible (tabla `sa_actions`). */
 export interface Action {
   id: string

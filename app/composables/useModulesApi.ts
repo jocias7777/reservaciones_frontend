@@ -1,4 +1,10 @@
-import type { AdvancedQuery, ApiEnvelope, PaginatedResult, PermissionModule } from '~/types'
+import type {
+  AdvancedQuery,
+  ApiEnvelope,
+  CreatePermissionModulePayload,
+  PaginatedResult,
+  PermissionModule
+} from '~/types'
 
 /**
  * Módulos del sistema — `app/routes/permission_routes.py` (`/permissions`).
@@ -7,9 +13,6 @@ import type { AdvancedQuery, ApiEnvelope, PaginatedResult, PermissionModule } fr
  * MÓDULO (`users`, `roles`, ...). Aquí se llama "módulo" para que el nombre
  * coincida con lo que ve el usuario: los permisos como tal nacen al cruzar
  * módulo × acción en `role-permissions` / `user-permissions`.
- *
- * Solo lectura: el backend valida los permisos contra códigos fijos escritos en
- * el código, así que dar de alta módulos desde la interfaz no serviría de nada.
  */
 export function useModulesApi() {
   const api = useApi()
@@ -23,6 +26,10 @@ export function useModulesApi() {
       unwrap(api<ApiEnvelope<PaginatedResult<PermissionModule>>>('/permissions', {
         method: 'QUERY',
         body: query
-      }))
+      })),
+
+    /** `POST /permissions`. */
+    create: (payload: CreatePermissionModulePayload) =>
+      unwrap(api<ApiEnvelope<PermissionModule>>('/permissions', { method: 'POST', body: payload }))
   }
 }

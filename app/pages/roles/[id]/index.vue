@@ -7,7 +7,7 @@ const route = useRoute()
 const roleId = computed(() => String(route.params.id))
 
 const rolesApi = useRolesApi()
-const toast = useToast()
+const notify = useNotify()
 
 const { data: role, status, error, refresh } = useAsyncData(
   () => `role:${roleId.value}`,
@@ -27,21 +27,11 @@ async function onSubmit(payload: { name: string, description: string }) {
   try {
     await rolesApi.update(roleId.value, payload)
 
-    toast.add({
-      title: 'Cambios guardados',
-      description: `Se actualizó «${payload.name}».`,
-      color: 'success',
-      icon: 'i-lucide-circle-check'
-    })
+    notify.success('Cambios guardados', `Se actualizó «${payload.name}».`)
 
     await refresh()
   } catch (err) {
-    toast.add({
-      title: 'No se pudo guardar',
-      description: apiErrorMessage(err),
-      color: 'error',
-      icon: 'i-lucide-circle-alert'
-    })
+    notify.error(err, 'No se pudo guardar')
   } finally {
     saving.value = false
   }
@@ -63,18 +53,14 @@ async function onSubmit(payload: { name: string, description: string }) {
         }]"
       />
 
-      <UAlert
-        v-if="error"
-        color="error"
-        variant="subtle"
-        icon="i-lucide-circle-alert"
+      <BaseErrorAlert
+        :error="error"
         title="No se pudo cargar el rol"
-        :description="apiErrorMessage(error)"
-        :actions="[{ label: 'Reintentar', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+        @retry="refresh"
       />
 
       <USkeleton
-        v-else-if="status === 'pending'"
+        v-if="status === 'pending'"
         class="h-64 w-full"
       />
 
@@ -89,7 +75,7 @@ async function onSubmit(payload: { name: string, description: string }) {
           <UButton
             label="Volver a roles"
             color="neutral"
-            variant="ghost"
+            variant="soft"
             icon="i-lucide-arrow-left"
             to="/roles"
           />

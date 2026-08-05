@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui'
+import type { ButtonProps, TableColumn } from '@nuxt/ui'
 import type { PermissionModule } from '~/types'
 
 definePageMeta({
@@ -9,15 +9,19 @@ definePageMeta({
 useSeoMeta({ title: 'Módulos del sistema' })
 
 /**
- * Catálogo de módulos, en modo consulta.
+ * Catálogo de módulos: sobre qué se pueden conceder permisos en cada rol.
  *
- * No se crean ni se borran desde aquí a propósito: el backend comprueba los
- * permisos con códigos fijos escritos en el código
- * (`require_permission('users', 'read')`), así que un módulo inventado desde la
- * interfaz no tendría ninguna ruta que lo verificara. Esta pantalla sirve para
- * saber sobre qué se pueden conceder permisos en cada rol.
+ * Se pueden dar de alta, pero el módulo solo surte efecto cuando el backend
+ * protege sus rutas con ese código (`require_permission('<code>', ...)`).
  */
 const modulesApi = useModulesApi()
+
+/** Acción principal de la pantalla: la misma en la cabecera y en el estado vacío. */
+const addModule: ButtonProps = {
+  label: 'Agregar módulo',
+  icon: 'i-lucide-package-plus',
+  to: '/roles/modulos/nuevo'
+}
 
 const {
   items,
@@ -49,24 +53,13 @@ const columns: TableColumn<PermissionModule>[] = [
     <UPageHeader
       title="Módulos del sistema"
       description="Zonas del sistema sobre las que se conceden permisos."
+      :links="[{ ...addModule, color: 'primary', variant: 'solid' }]"
     />
 
-    <UAlert
-      color="neutral"
-      variant="subtle"
-      icon="i-lucide-info"
-      title="Solo consulta"
-      description="Los módulos los define el backend. Aquí se listan para saber sobre qué puedes dar permisos en cada rol."
-    />
-
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="subtle"
-      icon="i-lucide-circle-alert"
+    <BaseErrorAlert
+      :error="error"
       title="No se pudieron cargar los módulos"
-      :description="apiErrorMessage(error)"
-      :actions="[{ label: 'Reintentar', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+      @retry="refresh"
     />
 
     <BaseListToolbar
@@ -112,25 +105,18 @@ const columns: TableColumn<PermissionModule>[] = [
           :title="isFiltered ? 'Sin resultados' : 'No hay módulos'"
           :description="isFiltered
             ? 'Prueba con otro código o nombre.'
-            : 'El backend todavía no tiene módulos registrados.'"
+            : 'Crea el primer módulo para poder conceder permisos sobre él.'"
+          :actions="isFiltered ? [] : [addModule]"
           variant="naked"
         />
       </template>
     </UTable>
 
-    <div
-      v-if="total > limit"
-      class="flex flex-col items-center gap-3 sm:flex-row sm:justify-between"
-    >
-      <p class="text-sm text-muted">
-        {{ total }} módulo(s) en total
-      </p>
-
-      <UPagination
-        v-model:page="page"
-        :items-per-page="limit"
-        :total="total"
-      />
-    </div>
+    <BaseListPagination
+      v-model:page="page"
+      :total="total"
+      :items-per-page="limit"
+      label="módulo(s)"
+    />
   </UContainer>
 </template>

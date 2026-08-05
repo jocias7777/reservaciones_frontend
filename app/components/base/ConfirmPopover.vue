@@ -36,7 +36,7 @@ function confirm() {
     <slot />
 
     <template #content>
-      <div class="w-72 p-4 space-y-3">
+      <div class="w-72 max-w-[calc(100vw-2rem)] p-4 space-y-3">
         <div class="flex items-start gap-2.5">
           <UIcon
             name="i-lucide-triangle-alert"

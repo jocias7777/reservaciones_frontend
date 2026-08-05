@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui'
+import type { ButtonProps, TableColumn } from '@nuxt/ui'
 import type { Filters, UserWithRelations } from '~/types'
 
 definePageMeta({
@@ -9,7 +9,22 @@ definePageMeta({
 useSeoMeta({ title: 'Usuarios' })
 
 const usersApi = useUsersApi()
-const toast = useToast()
+
+/** Botones de acción de cada fila: iconos algo menores que los del resto. */
+const rowAction = {
+  color: 'neutral',
+  variant: 'ghost',
+  ui: { leadingIcon: 'size-5' }
+} satisfies ButtonProps
+
+const notify = useNotify()
+
+/** Acción principal de la pantalla: la misma en la cabecera y en el estado vacío. */
+const addUser: ButtonProps = {
+  label: 'Agregar usuario',
+  icon: 'i-lucide-user-round-plus',
+  to: '/usuarios/nuevo'
+}
 
 /** Filtro por estado de la cuenta (`is_active` está en la whitelist del backend). */
 const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
@@ -58,20 +73,10 @@ async function removeUser(user: UserWithRelations) {
   removing.value = true
   try {
     await usersApi.remove(user.id)
-    toast.add({
-      title: 'Usuario eliminado',
-      description: `${user.email} pasó a la papelera.`,
-      color: 'success',
-      icon: 'i-lucide-circle-check'
-    })
+    notify.success('Usuario eliminado', `${user.email} pasó a la papelera.`)
     await refresh()
   } catch (error) {
-    toast.add({
-      title: 'No se pudo eliminar',
-      description: apiErrorMessage(error),
-      color: 'error',
-      icon: 'i-lucide-circle-alert'
-    })
+    notify.error(error, 'No se pudo eliminar')
   } finally {
     removing.value = false
   }
@@ -83,21 +88,11 @@ async function removeSelected() {
 
   try {
     await usersApi.bulkRemove(selectedIds.value)
-    toast.add({
-      title: 'Usuarios eliminados',
-      description: `${count} cuenta(s) pasaron a la papelera.`,
-      color: 'success',
-      icon: 'i-lucide-circle-check'
-    })
+    notify.success('Usuarios eliminados', `${count} cuenta(s) pasaron a la papelera.`)
     rowSelection.value = {}
     await refresh()
   } catch (error) {
-    toast.add({
-      title: 'No se pudo eliminar',
-      description: apiErrorMessage(error),
-      color: 'error',
-      icon: 'i-lucide-circle-alert'
-    })
+    notify.error(error, 'No se pudo eliminar')
   } finally {
     removing.value = false
   }
@@ -109,23 +104,13 @@ async function removeSelected() {
     <UPageHeader
       title="Usuarios"
       description="Cuentas con acceso al sistema."
-      :links="[{
-        label: 'Nuevo usuario',
-        icon: 'i-lucide-user-round-plus',
-        to: '/usuarios/nuevo',
-        color: 'primary',
-        variant: 'solid'
-      }]"
+      :links="[{ ...addUser, color: 'primary', variant: 'solid' }]"
     />
 
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="subtle"
-      icon="i-lucide-circle-alert"
+    <BaseErrorAlert
+      :error="error"
       title="No se pudieron cargar los usuarios"
-      :description="apiErrorMessage(error)"
-      :actions="[{ label: 'Reintentar', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+      @retry="refresh"
     />
 
     <BaseListToolbar
@@ -143,7 +128,7 @@ async function removeSelected() {
           ]"
           value-key="value"
           icon="i-lucide-filter"
-          class="w-44"
+          class="w-full sm:w-44"
         />
 
         <BaseConfirmPopover
@@ -236,9 +221,8 @@ async function removeSelected() {
           <UTooltip text="Editar">
             <UButton
               :to="`/usuarios/${row.original.id}`"
-              icon="i-lucide-pencil"
-              color="neutral"
-              variant="ghost"
+              icon="i-lucide-square-pen"
+              v-bind="rowAction"
               aria-label="Editar usuario"
             />
           </UTooltip>
@@ -246,9 +230,8 @@ async function removeSelected() {
           <UTooltip text="Permisos del usuario">
             <UButton
               :to="`/usuarios/${row.original.id}/permisos`"
-              icon="i-lucide-key-round"
-              color="neutral"
-              variant="ghost"
+              icon="i-lucide-list-checks"
+              v-bind="rowAction"
               aria-label="Permisos del usuario"
             />
           </UTooltip>
@@ -261,8 +244,8 @@ async function removeSelected() {
           >
             <UButton
               icon="i-lucide-trash-2"
+              v-bind="rowAction"
               color="error"
-              variant="ghost"
               aria-label="Eliminar usuario"
             />
           </BaseConfirmPopover>
@@ -276,25 +259,17 @@ async function removeSelected() {
           :description="isFiltered
             ? 'Prueba con otro correo o nombre de usuario.'
             : 'Crea la primera cuenta para empezar a dar acceso al sistema.'"
-          :actions="isFiltered ? [] : [{ label: 'Nuevo usuario', icon: 'i-lucide-user-round-plus', to: '/usuarios/nuevo' }]"
+          :actions="isFiltered ? [] : [addUser]"
           variant="naked"
         />
       </template>
     </UTable>
 
-    <div
-      v-if="total > limit"
-      class="flex flex-col items-center gap-3 sm:flex-row sm:justify-between"
-    >
-      <p class="text-sm text-muted">
-        {{ total }} usuario(s) en total
-      </p>
-
-      <UPagination
-        v-model:page="page"
-        :items-per-page="limit"
-        :total="total"
-      />
-    </div>
+    <BaseListPagination
+      v-model:page="page"
+      :total="total"
+      :items-per-page="limit"
+      label="usuario(s)"
+    />
   </UContainer>
 </template>

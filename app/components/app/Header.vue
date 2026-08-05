@@ -26,11 +26,22 @@ defineShortcuts({
       </NuxtLink>
     </template>
 
+    <!--
+      `viewportWrapper` y `viewport` vienen con `w-full`, que es el ancho del
+      disparador. Con un solo apartado ("Seguridad") el panel de 240px quedaba
+      recortado por el `overflow-hidden` del visor, así que se dejan al ancho de
+      su contenido.
+    -->
     <UNavigationMenu
       :items="items"
       variant="link"
-      color="primary"
-      :ui="{ link: 'font-medium' }"
+      color="neutral"
+      content-orientation="vertical"
+      :ui="{
+        link: 'font-medium text-[15px]',
+        viewportWrapper: 'w-auto',
+        viewport: 'w-auto'
+      }"
     />
 
     <template #right>
@@ -57,7 +68,8 @@ defineShortcuts({
         :items="items"
         orientation="vertical"
         variant="link"
-        color="primary"
+        color="neutral"
+        :ui="{ link: 'font-medium text-[15px]' }"
         class="-mx-2.5"
       />
     </template>

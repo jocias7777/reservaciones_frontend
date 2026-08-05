@@ -1,27 +1,28 @@
 <script setup lang="ts">
+import type { CreatePermissionModulePayload } from '~/types'
+
 definePageMeta({
   layout: 'app'
 })
 
-useSeoMeta({ title: 'Agregar rol' })
+useSeoMeta({ title: 'Agregar módulo' })
 
-const rolesApi = useRolesApi()
+const modulesApi = useModulesApi()
 const notify = useNotify()
 
 const saving = ref(false)
 
-async function onSubmit(payload: { name: string, description: string }) {
+async function onSubmit(payload: CreatePermissionModulePayload) {
   saving.value = true
 
   try {
-    const role = await rolesApi.create(payload)
+    const module = await modulesApi.create(payload)
 
-    notify.success('Rol creado', `Ahora define qué puede hacer «${role.name}».`)
+    notify.success('Módulo creado', `«${module.name}» ya aparece en los permisos de cada rol.`)
 
-    // El siguiente paso natural es asignarle permisos.
-    await navigateTo(`/roles/${role.id}/permisos`)
+    await navigateTo('/roles/modulos')
   } catch (error) {
-    notify.error(error, 'No se pudo crear el rol')
+    notify.error(error, 'No se pudo crear el módulo')
   } finally {
     saving.value = false
   }
@@ -32,12 +33,11 @@ async function onSubmit(payload: { name: string, description: string }) {
   <UContainer class="py-6">
     <div class="mx-auto w-full max-w-2xl space-y-4">
       <UPageHeader
-        title="Agregar rol"
-        description="Al guardarlo pasarás a definir sus permisos."
+        title="Agregar módulo"
+        description="Aparecerá en los permisos de cada rol."
       />
 
-      <RoleForm
-        mode="create"
+      <ModuleForm
         :loading="saving"
         @submit="onSubmit"
       >
@@ -46,10 +46,10 @@ async function onSubmit(payload: { name: string, description: string }) {
             label="Cancelar"
             color="neutral"
             variant="soft"
-            to="/roles"
+            to="/roles/modulos"
           />
         </template>
-      </RoleForm>
+      </ModuleForm>
     </div>
   </UContainer>
 </template>

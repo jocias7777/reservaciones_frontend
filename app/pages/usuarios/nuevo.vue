@@ -5,10 +5,10 @@ definePageMeta({
   layout: 'app'
 })
 
-useSeoMeta({ title: 'Nuevo usuario' })
+useSeoMeta({ title: 'Agregar usuario' })
 
 const usersApi = useUsersApi()
-const toast = useToast()
+const notify = useNotify()
 
 const saving = ref(false)
 
@@ -29,21 +29,11 @@ async function onSubmit(payload: UserFormPayload) {
 
     const user = await usersApi.create(body)
 
-    toast.add({
-      title: 'Usuario creado',
-      description: `${user.email} ya puede iniciar sesión.`,
-      color: 'success',
-      icon: 'i-lucide-circle-check'
-    })
+    notify.success('Usuario creado', `${user.email} ya puede iniciar sesión.`)
 
     await navigateTo('/usuarios')
   } catch (error) {
-    toast.add({
-      title: 'No se pudo crear el usuario',
-      description: apiErrorMessage(error),
-      color: 'error',
-      icon: 'i-lucide-circle-alert'
-    })
+    notify.error(error, 'No se pudo crear el usuario')
   } finally {
     saving.value = false
   }
@@ -54,7 +44,7 @@ async function onSubmit(payload: UserFormPayload) {
   <UContainer class="py-6">
     <div class="mx-auto w-full max-w-3xl space-y-4">
       <UPageHeader
-        title="Nuevo usuario"
+        title="Agregar usuario"
         description="Registra la cuenta y, si quieres, su perfil."
       />
 
@@ -67,7 +57,7 @@ async function onSubmit(payload: UserFormPayload) {
           <UButton
             label="Cancelar"
             color="neutral"
-            variant="ghost"
+            variant="soft"
             to="/usuarios"
           />
         </template>

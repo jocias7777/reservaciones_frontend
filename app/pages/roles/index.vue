@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui'
+import type { ButtonProps, TableColumn } from '@nuxt/ui'
 import type { RoleWithRelations } from '~/types'
 
 definePageMeta({
@@ -9,7 +9,21 @@ definePageMeta({
 useSeoMeta({ title: 'Roles' })
 
 const rolesApi = useRolesApi()
-const toast = useToast()
+
+/** Botones de acción de cada fila: iconos algo menores que los del resto. */
+const rowAction = {
+  color: 'neutral',
+  variant: 'ghost',
+  ui: { leadingIcon: 'size-5' }
+} satisfies ButtonProps
+
+/** Acción principal de la pantalla: la misma en la cabecera y en el estado vacío. */
+const addRole: ButtonProps = {
+  label: 'Agregar rol',
+  icon: 'i-lucide-shield-plus',
+  to: '/roles/nuevo'
+}
+const notify = useNotify()
 
 const {
   items,
@@ -47,20 +61,10 @@ async function removeRole(role: RoleWithRelations) {
   removing.value = true
   try {
     await rolesApi.remove(role.id)
-    toast.add({
-      title: 'Rol eliminado',
-      description: `«${role.name}» pasó a la papelera.`,
-      color: 'success',
-      icon: 'i-lucide-circle-check'
-    })
+    notify.success('Rol eliminado', `«${role.name}» pasó a la papelera.`)
     await refresh()
   } catch (error) {
-    toast.add({
-      title: 'No se pudo eliminar',
-      description: apiErrorMessage(error),
-      color: 'error',
-      icon: 'i-lucide-circle-alert'
-    })
+    notify.error(error, 'No se pudo eliminar')
   } finally {
     removing.value = false
   }
@@ -72,21 +76,11 @@ async function removeSelected() {
 
   try {
     await rolesApi.bulkRemove(selectedIds.value)
-    toast.add({
-      title: 'Roles eliminados',
-      description: `${count} rol(es) pasaron a la papelera.`,
-      color: 'success',
-      icon: 'i-lucide-circle-check'
-    })
+    notify.success('Roles eliminados', `${count} rol(es) pasaron a la papelera.`)
     rowSelection.value = {}
     await refresh()
   } catch (error) {
-    toast.add({
-      title: 'No se pudo eliminar',
-      description: apiErrorMessage(error),
-      color: 'error',
-      icon: 'i-lucide-circle-alert'
-    })
+    notify.error(error, 'No se pudo eliminar')
   } finally {
     removing.value = false
   }
@@ -98,29 +92,13 @@ async function removeSelected() {
     <UPageHeader
       title="Roles"
       description="Cada rol define qué puede hacer un usuario."
-      :links="[{
-        label: 'Módulos del sistema',
-        icon: 'i-lucide-key-round',
-        to: '/roles/modulos',
-        color: 'neutral',
-        variant: 'outline'
-      }, {
-        label: 'Nuevo rol',
-        icon: 'i-lucide-plus',
-        to: '/roles/nuevo',
-        color: 'primary',
-        variant: 'solid'
-      }]"
+      :links="[{ ...addRole, color: 'primary', variant: 'solid' }]"
     />
 
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="subtle"
-      icon="i-lucide-circle-alert"
+    <BaseErrorAlert
+      :error="error"
       title="No se pudieron cargar los roles"
-      :description="apiErrorMessage(error)"
-      :actions="[{ label: 'Reintentar', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+      @retry="refresh"
     />
 
     <BaseListToolbar
@@ -205,7 +183,7 @@ async function removeSelected() {
           <UButton
             :to="`/roles/${row.original.id}/permisos`"
             label="Permisos"
-            icon="i-lucide-key-round"
+            icon="i-lucide-list-checks"
             color="neutral"
             variant="subtle"
           />
@@ -213,9 +191,8 @@ async function removeSelected() {
           <UTooltip text="Editar datos del rol">
             <UButton
               :to="`/roles/${row.original.id}`"
-              icon="i-lucide-pencil"
-              color="neutral"
-              variant="ghost"
+              icon="i-lucide-square-pen"
+              v-bind="rowAction"
               aria-label="Editar rol"
             />
           </UTooltip>
@@ -228,8 +205,8 @@ async function removeSelected() {
           >
             <UButton
               icon="i-lucide-trash-2"
+              v-bind="rowAction"
               color="error"
-              variant="ghost"
               aria-label="Eliminar rol"
             />
           </BaseConfirmPopover>
@@ -243,25 +220,17 @@ async function removeSelected() {
           :description="isFiltered
             ? 'Prueba con otro nombre o descripción.'
             : 'Crea un rol y asígnale permisos por módulo.'"
-          :actions="isFiltered ? [] : [{ label: 'Nuevo rol', icon: 'i-lucide-plus', to: '/roles/nuevo' }]"
+          :actions="isFiltered ? [] : [addRole]"
           variant="naked"
         />
       </template>
     </UTable>
 
-    <div
-      v-if="total > limit"
-      class="flex flex-col items-center gap-3 sm:flex-row sm:justify-between"
-    >
-      <p class="text-sm text-muted">
-        {{ total }} rol(es) en total
-      </p>
-
-      <UPagination
-        v-model:page="page"
-        :items-per-page="limit"
-        :total="total"
-      />
-    </div>
+    <BaseListPagination
+      v-model:page="page"
+      :total="total"
+      :items-per-page="limit"
+      label="rol(es)"
+    />
   </UContainer>
 </template>

@@ -15,7 +15,7 @@ interface LoginState {
 
 const { login } = useAuth()
 const route = useRoute()
-const toast = useToast()
+const notify = useNotify()
 
 const loading = ref(false)
 
@@ -64,30 +64,22 @@ function validate(state: LoginState): FormError[] {
 }
 
 async function onSubmit(event: FormSubmitEvent<LoginState>) {
+  const { email, password, remember } = event.data
+
+  // `validate` ya garantiza que ambos vienen; esto solo satisface al tipo.
+  if (!email || !password) return
+
   loading.value = true
 
   try {
-    const user = await login(
-      { email: event.data.email!, password: event.data.password! },
-      Boolean(event.data.remember)
-    )
+    const user = await login({ email, password }, Boolean(remember))
 
-    toast.add({
-      title: 'Sesión iniciada',
-      description: `Bienvenido, ${user.username ?? user.email}.`,
-      color: 'success',
-      icon: 'i-lucide-circle-check'
-    })
+    notify.success('Sesión iniciada', `Bienvenido, ${user.username ?? user.email}.`)
 
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/usuarios'
     await navigateTo(redirect)
   } catch (error) {
-    toast.add({
-      title: 'No se pudo iniciar sesión',
-      description: apiErrorMessage(error, 'Revisa tus credenciales e inténtalo de nuevo.'),
-      color: 'error',
-      icon: 'i-lucide-circle-alert'
-    })
+    notify.error(error, 'No se pudo iniciar sesión')
   } finally {
     loading.value = false
   }

@@ -10,7 +10,7 @@ const userId = computed(() => String(route.params.id))
 
 const usersApi = useUsersApi()
 const profilesApi = useUserProfilesApi()
-const toast = useToast()
+const notify = useNotify()
 
 const { data: user, status, error, refresh } = useAsyncData(
   () => `user:${userId.value}`,
@@ -39,21 +39,11 @@ async function onSubmit(payload: UserFormPayload) {
       await profilesApi.create({ user_id: userId.value, ...payload.profile })
     }
 
-    toast.add({
-      title: 'Cambios guardados',
-      description: `Se actualizó ${payload.account.email}.`,
-      color: 'success',
-      icon: 'i-lucide-circle-check'
-    })
+    notify.success('Cambios guardados', `Se actualizó ${payload.account.email}.`)
 
     await refresh()
   } catch (err) {
-    toast.add({
-      title: 'No se pudo guardar',
-      description: apiErrorMessage(err),
-      color: 'error',
-      icon: 'i-lucide-circle-alert'
-    })
+    notify.error(err, 'No se pudo guardar')
   } finally {
     saving.value = false
   }
@@ -75,18 +65,14 @@ async function onSubmit(payload: UserFormPayload) {
         }]"
       />
 
-      <UAlert
-        v-if="error"
-        color="error"
-        variant="subtle"
-        icon="i-lucide-circle-alert"
+      <BaseErrorAlert
+        :error="error"
         title="No se pudo cargar el usuario"
-        :description="apiErrorMessage(error)"
-        :actions="[{ label: 'Reintentar', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+        @retry="refresh"
       />
 
       <div
-        v-else-if="status === 'pending'"
+        v-if="status === 'pending'"
         class="space-y-4"
       >
         <USkeleton class="h-56 w-full" />
@@ -104,7 +90,7 @@ async function onSubmit(payload: UserFormPayload) {
           <UButton
             label="Volver a usuarios"
             color="neutral"
-            variant="ghost"
+            variant="soft"
             icon="i-lucide-arrow-left"
             to="/usuarios"
           />

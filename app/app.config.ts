@@ -14,7 +14,7 @@ export default defineAppConfig({
     pageHeader: {
       slots: {
         root: 'border-b-0 pt-0 pb-0',
-        title: 'text-[26px] sm:text-[32px] font-semibold',
+        title: 'text-xl sm:text-2xl font-semibold',
         description: 'text-[15px] mt-1'
       },
       variants: {
@@ -34,16 +34,17 @@ export default defineAppConfig({
     },
 
     /**
-     * Los módulos del header (Usuarios y Roles) van en negro también cuando no
-     * son la pantalla actual: el tema los deja en `text-muted` con el icono en
-     * `text-dimmed`, y ahí se leían grises. El verde se reserva para el activo.
+     * Botones un punto más grandes de lo que trae el tema (14px de texto e
+     * iconos de 20px). Se ajusta el tamaño `md`, que es el que usa toda la
+     * aplicación, así crecen todos por igual: texto y también iconos.
      */
-    navigationMenu: {
+    button: {
       variants: {
-        active: {
-          false: {
-            link: 'text-highlighted',
-            linkLeadingIcon: 'text-highlighted'
+        size: {
+          md: {
+            base: 'text-[15px]',
+            leadingIcon: 'size-[22px]',
+            trailingIcon: 'size-[22px]'
           }
         }
       }

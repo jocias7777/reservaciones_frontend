@@ -14,7 +14,7 @@ const modulesApi = useModulesApi()
 const actionsApi = useActionsApi()
 const rolePermissionsApi = useRolePermissionsApi()
 const userPermissionsApi = useUserPermissionsApi()
-const toast = useToast()
+const notify = useNotify()
 
 /**
  * Aquí se edita el permiso EFECTIVO del usuario. Lo que se guarda son las
@@ -92,34 +92,8 @@ watch(data, (value) => {
   matrix.setBaseline(effective)
 }, { immediate: true })
 
-const valuesByModule = computed(() => {
-  const result: Record<string, Record<string, boolean>> = {}
-
-  for (const module of matrix.modules.value) {
-    const actions: Record<string, boolean> = {}
-    for (const action of matrix.actions.value) {
-      actions[action.id] = matrix.isEnabled(permissionKey(module.id, action.id))
-    }
-    result[module.id] = actions
-  }
-
-  return result
-})
-
-/** Lo heredado del rol, en el mismo formato, para marcar las excepciones. */
-const inheritedByModule = computed(() => {
-  const result: Record<string, Record<string, boolean>> = {}
-
-  for (const module of matrix.modules.value) {
-    const actions: Record<string, boolean> = {}
-    for (const action of matrix.actions.value) {
-      actions[action.id] = inherited.value.has(permissionKey(module.id, action.id))
-    }
-    result[module.id] = actions
-  }
-
-  return result
-})
+/** Lo que concede el rol, en el mismo formato, para marcar las excepciones. */
+const inheritedByModule = computed(() => matrix.toModuleValues(inherited.value))
 
 /** Celdas que hoy se apartan de lo que da el rol. */
 const overrideCount = computed(() => {
@@ -175,29 +149,14 @@ async function save() {
     const failed = results.filter(result => result.status === 'rejected')
 
     if (failed.length) {
-      toast.add({
-        title: 'Se guardó parcialmente',
-        description: `${failed.length} de ${operations.length} cambios fallaron: ${apiErrorMessage((failed[0] as PromiseRejectedResult).reason)}`,
-        color: 'warning',
-        icon: 'i-lucide-triangle-alert'
-      })
+      notify.warning('Se guardó parcialmente', `${failed.length} de ${operations.length} cambios fallaron: ${apiErrorMessage((failed[0] as PromiseRejectedResult).reason)}`)
     } else {
-      toast.add({
-        title: 'Permisos actualizados',
-        description: `Se guardaron los permisos de ${userName.value}.`,
-        color: 'success',
-        icon: 'i-lucide-circle-check'
-      })
+      notify.success('Permisos actualizados', `Se guardaron los permisos de ${userName.value}.`)
     }
 
     await refresh()
   } catch (err) {
-    toast.add({
-      title: 'No se pudieron guardar los permisos',
-      description: apiErrorMessage(err),
-      color: 'error',
-      icon: 'i-lucide-circle-alert'
-    })
+    notify.error(err, 'No se pudieron guardar los permisos')
   } finally {
     saving.value = false
   }
@@ -238,18 +197,14 @@ onBeforeRouteLeave(() => {
       }]"
     />
 
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="subtle"
-      icon="i-lucide-circle-alert"
+    <BaseErrorAlert
+      :error="error"
       title="No se pudieron cargar los permisos"
-      :description="apiErrorMessage(error)"
-      :actions="[{ label: 'Reintentar', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+      @retry="refresh"
     />
 
     <div
-      v-else-if="status === 'pending'"
+      v-if="status === 'pending'"
       class="space-y-4"
     >
       <USkeleton class="h-32 w-full" />
@@ -324,22 +279,16 @@ onBeforeRouteLeave(() => {
         :actions="[{ label: 'Ir a módulos', icon: 'i-lucide-arrow-right', to: '/roles/modulos' }]"
       />
 
-      <div
+      <PermissionModuleList
         v-else
-        class="space-y-4"
-      >
-        <PermissionModuleCard
-          v-for="module in matrix.modules.value"
-          :key="module.id"
-          :module="module"
-          :actions="matrix.actions.value"
-          :values="valuesByModule[module.id] ?? {}"
-          :inherited="inheritedByModule[module.id] ?? {}"
-          :disabled="saving"
-          @toggle="(actionId, value) => matrix.set(permissionKey(module.id, actionId), value)"
-          @toggle-module="value => matrix.setModule(module.id, value)"
-        />
-      </div>
+        :modules="matrix.modules.value"
+        :actions="matrix.actions.value"
+        :values="matrix.valuesByModule.value"
+        :inherited="inheritedByModule"
+        :disabled="saving"
+        @toggle="(moduleId, actionId, value) => matrix.set(permissionKey(moduleId, actionId), value)"
+        @toggle-module="matrix.setModule"
+      />
 
       <PermissionSaveBar
         :change-count="matrix.changeCount.value"

@@ -101,7 +101,7 @@ function onSubmit() {
       <UButton
         type="submit"
         :label="isCreate ? 'Crear rol' : 'Guardar cambios'"
-        :icon="isCreate ? 'i-lucide-plus' : 'i-lucide-save'"
+        :icon="isCreate ? 'i-lucide-shield-plus' : 'i-lucide-save'"
         :loading="props.loading"
       />
     </div>

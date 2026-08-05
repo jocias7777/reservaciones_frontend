@@ -84,6 +84,27 @@ export function usePermissionMatrix(options: UsePermissionMatrixOptions) {
     draft.value = new Set(baseline.value)
   }
 
+  /**
+   * Reparte un conjunto de claves en el formato que consumen las tarjetas:
+   * `{ [moduleId]: { [actionId]: boolean } }`.
+   */
+  function toModuleValues(keys: Set<string>): Record<string, Record<string, boolean>> {
+    const result: Record<string, Record<string, boolean>> = {}
+
+    for (const module of modules.value) {
+      const porAccion: Record<string, boolean> = {}
+      for (const action of actions.value) {
+        porAccion[action.id] = keys.has(permissionKey(module.id, action.id))
+      }
+      result[module.id] = porAccion
+    }
+
+    return result
+  }
+
+  /** Estado actual de la matriz, listo para las tarjetas de módulo. */
+  const valuesByModule = computed(() => toModuleValues(draft.value))
+
   return {
     modules,
     actions,
@@ -96,6 +117,8 @@ export function usePermissionMatrix(options: UsePermissionMatrixOptions) {
     changeCount,
     isDirty,
     isEnabled,
+    valuesByModule,
+    toModuleValues,
     set,
     setModule,
     setAll,
@@ -103,5 +126,3 @@ export function usePermissionMatrix(options: UsePermissionMatrixOptions) {
     reset
   }
 }
-
-export type PermissionMatrix = ReturnType<typeof usePermissionMatrix>
