@@ -269,11 +269,6 @@ async function save() {
       />
 
       <template v-else>
-        <PermissionSuperadminAlert
-          v-if="isSuperadminRole(data.role)"
-          scope="user"
-        />
-
         <UAlert
           v-if="!data.user.role_id"
           color="warning"

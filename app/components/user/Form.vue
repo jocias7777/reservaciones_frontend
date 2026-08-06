@@ -71,14 +71,32 @@ const { data: roles, error: rolesError } = useAsyncData(
   { server: false, default: () => [] }
 )
 
+/**
+ * Valor de la opción "Sin rol asignado".
+ *
+ * No puede ser la cadena vacía, aunque sea lo que se guarda: el desplegable de
+ * Nuxt UI la reserva para "no hay nada elegido" y lanza un error al pintar una
+ * opción con ese valor, con lo que el panel no llegaba a abrirse. Se usa un
+ * valor propio y se traduce a `''` al escribir en el formulario.
+ */
+const WITHOUT_ROLE = 'sin-rol'
+
 const roleItems = computed(() => [
-  { label: 'Sin rol asignado', value: '', icon: 'i-lucide-shield-off' },
+  { label: 'Sin rol asignado', value: WITHOUT_ROLE, icon: 'i-lucide-shield-off' },
   ...(roles.value ?? []).map(role => ({
     label: role.name,
     value: role.id,
     icon: 'i-lucide-shield'
   }))
 ])
+
+/** Lo que ve y escribe el selector; el estado sigue guardando `''` para "sin rol". */
+const selectedRole = computed({
+  get: () => state.role_id || WITHOUT_ROLE,
+  set: (value: string) => {
+    state.role_id = value === WITHOUT_ROLE ? '' : value
+  }
+})
 
 /** La edad se deriva de la fecha de nacimiento; no se edita a mano. */
 const age = computed(() => ageFromBirthDate(state.date_of_birth))
@@ -239,7 +257,7 @@ function onSubmit() {
           :error="rolesError ? 'No se pudieron cargar los roles.' : undefined"
         >
           <USelectMenu
-            v-model="state.role_id"
+            v-model="selectedRole"
             :items="roleItems"
             value-key="value"
             :icon="state.role_id ? 'i-lucide-shield' : 'i-lucide-shield-off'"

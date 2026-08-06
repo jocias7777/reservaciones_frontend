@@ -95,20 +95,6 @@ export function moduleIcon(module: Pick<PermissionModule, 'code'>): string {
   return MODULE_ICONS[module.code] ?? 'i-lucide-box'
 }
 
-/**
- * Rol al que el backend deja pasar sin comprobar nada.
- *
- * `require_permission` (`app/decorators.py`) mira el NOMBRE del rol antes que
- * cualquier permiso: quien lo tenga entra a todo, aunque su matriz esté vacía y
- * aunque se le bloquee con una excepción. Se comprueba aquí para poder avisarlo
- * en las pantallas de permisos, donde si no parecería lo contrario.
- */
-const SUPERADMIN_ROLE = 'superadmin'
-
-export function isSuperadminRole(role?: { name?: string } | null): boolean {
-  return role?.name?.trim().toLowerCase() === SUPERADMIN_ROLE
-}
-
 export function actionLabel(action: Action): string {
   return ACTION_LABELS[action.code] ?? action.name
 }

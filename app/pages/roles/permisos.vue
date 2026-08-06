@@ -196,11 +196,6 @@ async function save() {
     </div>
 
     <template v-else-if="selectedRole">
-      <PermissionSuperadminAlert
-        v-if="isSuperadminRole(selectedRole)"
-        scope="role"
-      />
-
       <PermissionSummary
         headline="Rol"
         :title="selectedRole.name"
@@ -243,9 +238,13 @@ async function save() {
       />
     </template>
 
-    <!-- El rol de la URL ya no existe (borrado o enlace viejo). -->
+    <!--
+      Solo cuando la URL trae un rol que no está en la lista (borrado, o un
+      enlace viejo). Sin nada elegido no se dice nada: debajo del selector no
+      hay más que el hueco, como en los permisos por usuario.
+    -->
     <UEmpty
-      v-else-if="!loadingRole && catalogStatus === 'success'"
+      v-else-if="selectedRoleId && catalogStatus === 'success'"
       icon="i-lucide-search-x"
       title="Ese rol ya no existe"
       description="Puede que lo hayan eliminado. Elige otro en el selector de arriba."
