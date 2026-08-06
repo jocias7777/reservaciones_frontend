@@ -18,7 +18,6 @@ useSeoMeta({ title: 'Categorías de acciones' })
  * orden en el que se mostrará.
  */
 const categoriesApi = useActionCategoriesApi()
-const notify = useNotify()
 
 /** Botones de acción de cada fila: iconos algo menores que los del resto. */
 const rowAction = {
@@ -63,39 +62,13 @@ const columns: TableColumn<ActionCategory>[] = [
   { id: 'row-actions' }
 ]
 
-const rowSelection = ref<Record<string, boolean>>({})
-const selectedIds = computed(() => Object.keys(rowSelection.value).filter(id => rowSelection.value[id]))
-
-const removing = ref(false)
-
-async function removeCategory(category: ActionCategory) {
-  removing.value = true
-  try {
-    await categoriesApi.remove(category.id)
-    notify.success('Categoría eliminada', `Las acciones de «${category.name}» pasan al bloque «Otras acciones».`)
-    await refresh()
-  } catch (err) {
-    notify.error(err, 'No se pudo eliminar')
-  } finally {
-    removing.value = false
-  }
-}
-
-async function removeSelected() {
-  const count = selectedIds.value.length
-  removing.value = true
-
-  try {
-    await categoriesApi.bulkRemove(selectedIds.value)
-    notify.success('Categorías eliminadas', `${count} categoría(s) pasaron a la papelera.`)
-    rowSelection.value = {}
-    await refresh()
-  } catch (err) {
-    notify.error(err, 'No se pudo eliminar')
-  } finally {
-    removing.value = false
-  }
-}
+const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useResourceRemoval<ActionCategory>({
+  remove: category => categoriesApi.remove(category.id),
+  bulkRemove: ids => categoriesApi.bulkRemove(ids),
+  refresh,
+  successOne: category => ['Categoría eliminada', `Las acciones de «${category.name}» pasan al bloque «Otras acciones».`],
+  successMany: count => ['Categorías eliminadas', `${count} categoría(s) pasaron a la papelera.`]
+})
 </script>
 
 <template>
@@ -105,13 +78,6 @@ async function removeSelected() {
       description="Los bloques en los que se agrupan las acciones dentro de cada módulo, en el orden en que se muestran."
     >
       <template #actions>
-        <UButton
-          label="Acciones"
-          icon="i-lucide-circle-plus"
-          color="neutral"
-          variant="outline"
-          to="/roles/acciones"
-        />
         <UButton v-bind="addCategory" />
       </template>
     </BasePageHeader>
@@ -235,7 +201,7 @@ async function removeSelected() {
             title="¿Eliminar esta categoría?"
             :description="`Las acciones de «${row.original.name}» no se borran: pasan al bloque «Otras acciones» hasta que se les asigne otra.`"
             :loading="removing"
-            @confirm="removeCategory(row.original)"
+            @confirm="removeOne(row.original)"
           >
             <UButton
               icon="i-lucide-trash-2"

@@ -12,15 +12,17 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  // Los valores de abajo son los de desarrollo; en producción se cambian sin
+  // tocar el código con `NUXT_API_PROXY_TARGET` y `NUXT_PUBLIC_API_BASE`.
   runtimeConfig: {
     // Backend Flask al que reenvía `server/routes/api/[...path].ts`. Solo lo ve
     // el servidor: el navegador nunca llama directamente al backend, por lo que
     // no hace falta configurar CORS.
-    apiProxyTarget: process.env.NUXT_API_PROXY_TARGET || 'http://127.0.0.1:5000',
+    apiProxyTarget: 'http://127.0.0.1:5000',
 
     public: {
       // Prefijo de la API tal como lo ve el navegador.
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api'
+      apiBase: '/api'
     }
   },
 

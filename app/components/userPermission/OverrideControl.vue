@@ -53,19 +53,16 @@ const OPTIONS = [
 
 <template>
   <!--
-    OJO: es `UFieldGroup`, no `UButtonGroup`. En Nuxt UI v4 el segundo ya no
-    existe, y al no resolverse el componente los tres botones quedaban sueltos
-    dentro de un elemento sin estilo: se veían despegados y, en cuanto la columna
-    se quedaba algo corta, el tercero saltaba a la línea de abajo y la fila
-    pasaba a medir el triple.
+    Las tres opciones van separadas, no pegadas en un grupo: se distinguen mejor
+    y se pulsa la correcta a la primera.
 
-    El grupo ocupa todo el ancho de su columna y las tres opciones se reparten a
-    partes iguales, así que el reparto no depende de lo que mida cada etiqueta.
+    Ocupan todo el ancho de su columna repartido a partes iguales (`flex-1`), así
+    el tamaño de cada botón no depende de lo que mida su etiqueta y las filas
+    quedan alineadas entre sí.
   -->
-  <UFieldGroup
-    size="xs"
+  <div
     role="radiogroup"
-    class="w-full"
+    class="flex w-full items-center gap-2"
     :aria-label="props.label"
   >
     <UTooltip
@@ -77,6 +74,7 @@ const OPTIONS = [
       <UButton
         :label="option.label"
         :icon="option.icon"
+        size="xs"
         :color="props.modelValue === option.value ? option.color : 'neutral'"
         :variant="props.modelValue === option.value ? 'solid' : 'outline'"
         :disabled="props.disabled"
@@ -88,5 +86,5 @@ const OPTIONS = [
         @click="emit('update:modelValue', option.value)"
       />
     </UTooltip>
-  </UFieldGroup>
+  </div>
 </template>

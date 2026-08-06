@@ -8,18 +8,6 @@ const props = withDefaults(defineProps<{
 })
 
 const search = defineModel<string>('search', { default: '' })
-
-/**
- * Los listados piden sus datos solo en el cliente, así que en el servidor
- * `loading` siempre es `false`. Pintar el indicador antes de montar cambiaba el
- * icono de la lupa por el de carga y Vue avisaba de un desajuste de hidratación.
- */
-const mounted = ref(false)
-onMounted(() => {
-  mounted.value = true
-})
-
-const showLoading = computed(() => mounted.value && props.loading)
 </script>
 
 <template>
@@ -28,7 +16,7 @@ const showLoading = computed(() => mounted.value && props.loading)
       v-model="search"
       :placeholder="props.placeholder"
       icon="i-lucide-search"
-      :loading="showLoading"
+      :loading="props.loading"
       class="w-full sm:max-w-xs"
     >
       <template

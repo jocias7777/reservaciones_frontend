@@ -23,7 +23,6 @@ const addRole: ButtonProps = {
   icon: 'i-lucide-shield-plus',
   to: '/roles/nuevo'
 }
-const notify = useNotify()
 
 const {
   items,
@@ -52,39 +51,13 @@ const columns: TableColumn<RoleWithRelations>[] = [
   { id: 'actions' }
 ]
 
-const rowSelection = ref<Record<string, boolean>>({})
-const selectedIds = computed(() => Object.keys(rowSelection.value).filter(id => rowSelection.value[id]))
-
-const removing = ref(false)
-
-async function removeRole(role: RoleWithRelations) {
-  removing.value = true
-  try {
-    await rolesApi.remove(role.id)
-    notify.success('Rol eliminado', `«${role.name}» pasó a la papelera.`)
-    await refresh()
-  } catch (error) {
-    notify.error(error, 'No se pudo eliminar')
-  } finally {
-    removing.value = false
-  }
-}
-
-async function removeSelected() {
-  const count = selectedIds.value.length
-  removing.value = true
-
-  try {
-    await rolesApi.bulkRemove(selectedIds.value)
-    notify.success('Roles eliminados', `${count} rol(es) pasaron a la papelera.`)
-    rowSelection.value = {}
-    await refresh()
-  } catch (error) {
-    notify.error(error, 'No se pudo eliminar')
-  } finally {
-    removing.value = false
-  }
-}
+const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useResourceRemoval<RoleWithRelations>({
+  remove: role => rolesApi.remove(role.id),
+  bulkRemove: ids => rolesApi.bulkRemove(ids),
+  refresh,
+  successOne: role => ['Rol eliminado', `«${role.name}» pasó a la papelera.`],
+  successMany: count => ['Roles eliminados', `${count} rol(es) pasaron a la papelera.`]
+})
 </script>
 
 <template>
@@ -183,14 +156,6 @@ async function removeSelected() {
 
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
-          <UButton
-            :to="`/roles/${row.original.id}/permisos`"
-            label="Permisos"
-            icon="i-lucide-list-checks"
-            color="neutral"
-            variant="subtle"
-          />
-
           <UTooltip text="Editar datos del rol">
             <UButton
               :to="`/roles/${row.original.id}`"
@@ -204,7 +169,7 @@ async function removeSelected() {
             title="¿Eliminar este rol?"
             :description="`«${row.original.name}» dejará de estar disponible y sus usuarios se quedarán sin rol.`"
             :loading="removing"
-            @confirm="removeRole(row.original)"
+            @confirm="removeOne(row.original)"
           >
             <UButton
               icon="i-lucide-trash-2"

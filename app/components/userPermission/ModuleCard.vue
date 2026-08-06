@@ -40,10 +40,7 @@ const stateOf = (actionId: string): OverrideState => props.states[actionId] ?? '
 
 /** Lo que de verdad podrá hacer: la excepción manda sobre el rol. */
 function effective(actionId: string): boolean {
-  const state = stateOf(actionId)
-  if (state === 'grant') return true
-  if (state === 'deny') return false
-  return Boolean(props.inherited[actionId])
+  return resolveEffective(stateOf(actionId), Boolean(props.inherited[actionId]))
 }
 
 const exceptionCount = computed(() =>
@@ -76,7 +73,7 @@ function rowClass(actionId: string): string {
  * obligaba a reservar el ancho del texto más largo, y ese ancho se lo quitaba a
  * los botones, que acababan partiéndose en dos líneas.
  */
-const COLUMNS = 'gap-x-3 gap-y-1 lg:grid-cols-[minmax(8rem,1fr)_4rem_17rem_6.5rem] lg:items-center'
+const COLUMNS = 'gap-x-4 gap-y-1 lg:grid-cols-[minmax(8rem,1fr)_19rem_6.5rem] lg:items-center'
 </script>
 
 <template>
@@ -152,7 +149,6 @@ const COLUMNS = 'gap-x-3 gap-y-1 lg:grid-cols-[minmax(8rem,1fr)_4rem_17rem_6.5re
           :class="COLUMNS"
         >
           <span>Acción</span>
-          <span>El rol da</span>
           <span>Para este usuario</span>
           <span>Resultado</span>
         </div>
@@ -212,16 +208,6 @@ const COLUMNS = 'gap-x-3 gap-y-1 lg:grid-cols-[minmax(8rem,1fr)_4rem_17rem_6.5re
                 class="size-4 text-error"
                 aria-label="Acción irreversible"
               />
-            </span>
-
-            <!-- Lo que concede el rol: solo lectura, dice de dónde viene el valor -->
-            <span class="inline-flex items-center gap-1.5 text-sm text-muted">
-              <span class="lg:hidden text-xs text-dimmed">El rol da:</span>
-              <UIcon
-                :name="props.inherited[action.id] ? 'i-lucide-check' : 'i-lucide-x'"
-                class="size-4 shrink-0"
-              />
-              {{ props.inherited[action.id] ? 'Sí' : 'No' }}
             </span>
 
             <!-- Lo que se decide para este usuario -->

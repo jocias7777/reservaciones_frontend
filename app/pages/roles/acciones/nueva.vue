@@ -10,6 +10,7 @@ useSeoMeta({ title: 'Agregar acción' })
 const actionsApi = useActionsApi()
 const actionCategoriesApi = useActionCategoriesApi()
 const notify = useNotify()
+const { saving, save } = useSaveAction()
 
 /** Las categorías pueblan el selector del formulario. */
 const { data: categories, error, refresh } = useAsyncData(
@@ -18,78 +19,66 @@ const { data: categories, error, refresh } = useAsyncData(
   { server: false, default: () => [] }
 )
 
-const saving = ref(false)
-
 /** Id del `<form>`; el botón de guardar vive en la cabecera y lo referencia. */
 const FORM_ID = 'action-form'
 
-async function onSubmit(payload: CreateActionPayload) {
-  saving.value = true
-
-  try {
+function onSubmit(payload: CreateActionPayload) {
+  return save('No se pudo crear la acción', async () => {
     const action = await actionsApi.create(payload)
 
     notify.success('Acción creada', `«${action.name}» ya aparece en los permisos de cada rol.`)
 
     await navigateTo('/roles/acciones')
-  } catch (err) {
-    notify.error(err, 'No se pudo crear la acción')
-  } finally {
-    saving.value = false
-  }
+  })
 }
 </script>
 
 <template>
-  <UContainer class="py-6">
-    <div class="mx-auto w-full max-w-2xl space-y-4">
-      <BasePageHeader
-        title="Agregar acción"
-        description="Aparecerá en los permisos de cada rol, dentro del bloque de su categoría."
-      >
-        <template #actions>
-          <UButton
-            label="Cancelar"
-            color="neutral"
-            variant="soft"
-            to="/roles/acciones"
-          />
-          <UButton
-            label="Crear acción"
-            icon="i-lucide-circle-plus"
-            type="submit"
-            :form="FORM_ID"
-            :loading="saving"
-          />
-        </template>
-      </BasePageHeader>
-
-      <BaseErrorAlert
-        :error="error"
-        title="No se pudieron cargar las categorías"
-        @retry="refresh"
+  <BaseFormPage
+    title="Agregar acción"
+    description="Aparecerá en los permisos de cada rol, dentro del bloque de su categoría."
+  >
+    <template #actions>
+      <UButton
+        label="Cancelar"
+        color="neutral"
+        variant="soft"
+        to="/roles/acciones"
       />
-
-      <UAlert
-        v-if="!error && !categories.length"
-        color="warning"
-        variant="subtle"
-        icon="i-lucide-triangle-alert"
-        title="Todavía no hay categorías"
-        description="Cada acción se muestra dentro del bloque de su categoría. Crea al menos una para poder dar de alta acciones."
-        :actions="[{
-          label: 'Crear categoría',
-          color: 'warning',
-          variant: 'outline',
-          to: '/roles/categorias/nueva'
-        }]"
+      <UButton
+        label="Crear acción"
+        icon="i-lucide-circle-plus"
+        type="submit"
+        :form="FORM_ID"
+        :loading="saving"
       />
+    </template>
 
-      <ActionForm
-        :id="FORM_ID"
-        :categories="categories"
-        @submit="onSubmit"
-      />
-    </div>
-  </UContainer>
+    <BaseErrorAlert
+      :error="error"
+      title="No se pudieron cargar las categorías"
+      @retry="refresh"
+    />
+
+    <UAlert
+      v-if="!error && !categories.length"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      title="Todavía no hay categorías"
+      description="Cada acción se muestra dentro del bloque de su categoría. Crea al menos una para poder dar de alta acciones."
+      :actions="[{
+        label: 'Crear categoría',
+        color: 'warning',
+        variant: 'outline',
+        to: '/roles/categorias/nueva'
+      }]"
+    />
+
+    <ActionForm
+      :id="FORM_ID"
+      :categories="categories"
+      @submit="onSubmit"
+    />
+  </BaseFormPage>
 </template>

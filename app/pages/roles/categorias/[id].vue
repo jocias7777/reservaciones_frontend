@@ -10,6 +10,7 @@ const categoryId = computed(() => String(route.params.id))
 
 const categoriesApi = useActionCategoriesApi()
 const notify = useNotify()
+const { saving, save } = useSaveAction()
 
 const { data: category, status, error, refresh } = useAsyncData(
   () => `action-category:${categoryId.value}`,
@@ -17,75 +18,65 @@ const { data: category, status, error, refresh } = useAsyncData(
   { server: false, watch: [categoryId] }
 )
 
+const loading = usePendingAfterHydration(status)
+
 useSeoMeta({
   title: () => (category.value ? `Categoría · ${category.value.name}` : 'Categoría')
 })
 
-const saving = ref(false)
-
 /** Id del `<form>`; el botón de guardar vive en la cabecera y lo referencia. */
 const FORM_ID = 'action-category-form'
 
-async function onSubmit(payload: CreateActionCategoryPayload) {
-  saving.value = true
-
-  try {
+function onSubmit(payload: CreateActionCategoryPayload) {
+  return save('No se pudo guardar', async () => {
     await categoriesApi.update(categoryId.value, payload)
 
     notify.success('Cambios guardados', `Se actualizó «${payload.name}».`)
 
     await refresh()
-  } catch (err) {
-    notify.error(err, 'No se pudo guardar')
-  } finally {
-    saving.value = false
-  }
+  })
 }
 </script>
 
 <template>
-  <UContainer class="py-6">
-    <div class="mx-auto w-full max-w-2xl space-y-4">
-      <BasePageHeader
-        :title="category?.name ?? 'Categoría'"
-        :description="category?.description ?? undefined"
-      >
-        <template #actions>
-          <UButton
-            label="Volver a categorías"
-            icon="i-lucide-arrow-left"
-            color="neutral"
-            variant="ghost"
-            to="/roles/categorias"
-          />
-          <UButton
-            label="Guardar cambios"
-            icon="i-lucide-save"
-            type="submit"
-            :form="FORM_ID"
-            :loading="saving"
-            :disabled="!category"
-          />
-        </template>
-      </BasePageHeader>
-
-      <BaseErrorAlert
-        :error="error"
-        title="No se pudo cargar la categoría"
-        @retry="refresh"
+  <BaseFormPage
+    :title="category?.name ?? 'Categoría'"
+    :description="category?.description ?? undefined"
+  >
+    <template #actions>
+      <UButton
+        label="Volver a categorías"
+        icon="i-lucide-arrow-left"
+        color="neutral"
+        variant="ghost"
+        to="/roles/categorias"
       />
-
-      <USkeleton
-        v-if="status === 'pending'"
-        class="h-64 w-full"
+      <UButton
+        label="Guardar cambios"
+        icon="i-lucide-save"
+        type="submit"
+        :form="FORM_ID"
+        :loading="saving"
+        :disabled="!category"
       />
+    </template>
 
-      <ActionCategoryForm
-        v-else
-        :id="FORM_ID"
-        :category="category"
-        @submit="onSubmit"
-      />
-    </div>
-  </UContainer>
+    <BaseErrorAlert
+      :error="error"
+      title="No se pudo cargar la categoría"
+      @retry="refresh"
+    />
+
+    <USkeleton
+      v-if="loading"
+      class="h-64 w-full"
+    />
+
+    <ActionCategoryForm
+      v-else
+      :id="FORM_ID"
+      :category="category"
+      @submit="onSubmit"
+    />
+  </BaseFormPage>
 </template>

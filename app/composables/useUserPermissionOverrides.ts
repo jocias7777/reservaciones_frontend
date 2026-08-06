@@ -82,10 +82,7 @@ export function useUserPermissionOverrides(options: UseUserPermissionOverridesOp
 
   /** Lo que de verdad podrá hacer el usuario: la excepción manda sobre el rol. */
   function effective(key: string): boolean {
-    const state = stateOf(key)
-    if (state === 'grant') return true
-    if (state === 'deny') return false
-    return inherited.value.has(key)
+    return resolveEffective(stateOf(key), inherited.value.has(key))
   }
 
   /** Estado por acción de un módulo, listo para la tarjeta. */

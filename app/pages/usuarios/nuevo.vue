@@ -9,16 +9,13 @@ useSeoMeta({ title: 'Agregar usuario' })
 
 const usersApi = useUsersApi()
 const notify = useNotify()
-
-const saving = ref(false)
+const { saving, save } = useSaveAction()
 
 /** Id del `<form>`; el botón de guardar vive en la cabecera y lo referencia. */
 const FORM_ID = 'user-form'
 
-async function onSubmit(payload: UserFormPayload) {
-  saving.value = true
-
-  try {
+function onSubmit(payload: UserFormPayload) {
+  return save('No se pudo crear el usuario', async () => {
     // `POST /users` acepta el perfil anidado, así que la cuenta y el perfil se
     // crean en una sola llamada (y en una sola transacción del backend).
     const body: CreateUserPayload = {
@@ -35,43 +32,36 @@ async function onSubmit(payload: UserFormPayload) {
     notify.success('Usuario creado', `${user.email} ya puede iniciar sesión.`)
 
     await navigateTo('/usuarios')
-  } catch (error) {
-    notify.error(error, 'No se pudo crear el usuario')
-  } finally {
-    saving.value = false
-  }
+  })
 }
 </script>
 
 <template>
-  <UContainer class="py-6">
-    <div class="mx-auto w-full max-w-3xl space-y-4">
-      <BasePageHeader
-        title="Agregar usuario"
-        description="Registra la cuenta y, si quieres, su perfil."
-      >
-        <template #actions>
-          <UButton
-            label="Cancelar"
-            color="neutral"
-            variant="soft"
-            to="/usuarios"
-          />
-          <UButton
-            label="Crear usuario"
-            icon="i-lucide-user-round-plus"
-            type="submit"
-            :form="FORM_ID"
-            :loading="saving"
-          />
-        </template>
-      </BasePageHeader>
-
-      <UserForm
-        :id="FORM_ID"
-        mode="create"
-        @submit="onSubmit"
+  <BaseFormPage
+    title="Agregar usuario"
+    description="Registra la cuenta y, si quieres, su perfil."
+    width="lg"
+  >
+    <template #actions>
+      <UButton
+        label="Cancelar"
+        color="neutral"
+        variant="soft"
+        to="/usuarios"
       />
-    </div>
-  </UContainer>
+      <UButton
+        label="Crear usuario"
+        icon="i-lucide-user-round-plus"
+        type="submit"
+        :form="FORM_ID"
+        :loading="saving"
+      />
+    </template>
+
+    <UserForm
+      :id="FORM_ID"
+      mode="create"
+      @submit="onSubmit"
+    />
+  </BaseFormPage>
 </template>

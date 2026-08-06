@@ -1,4 +1,4 @@
-import type { Action, ActionCategory, PermissionModule } from '~/types'
+import type { Action, ActionCategory, OverrideState, PermissionModule } from '~/types'
 
 /**
  * Presentación de la matriz de permisos: orden, agrupación e iconos.
@@ -95,6 +95,20 @@ export function moduleIcon(module: Pick<PermissionModule, 'code'>): string {
   return MODULE_ICONS[module.code] ?? 'i-lucide-box'
 }
 
+/**
+ * Rol al que el backend deja pasar sin comprobar nada.
+ *
+ * `require_permission` (`app/decorators.py`) mira el NOMBRE del rol antes que
+ * cualquier permiso: quien lo tenga entra a todo, aunque su matriz esté vacía y
+ * aunque se le bloquee con una excepción. Se comprueba aquí para poder avisarlo
+ * en las pantallas de permisos, donde si no parecería lo contrario.
+ */
+const SUPERADMIN_ROLE = 'superadmin'
+
+export function isSuperadminRole(role?: { name?: string } | null): boolean {
+  return role?.name?.trim().toLowerCase() === SUPERADMIN_ROLE
+}
+
 export function actionLabel(action: Action): string {
   return ACTION_LABELS[action.code] ?? action.name
 }
@@ -165,6 +179,20 @@ export function groupActions(actions: Action[], categories: ActionCategory[] = [
   }
 
   return groups
+}
+
+/**
+ * Qué puede hacer de verdad un usuario en una celda.
+ *
+ * Es la misma regla que aplica el backend en `require_permission`: si hay
+ * excepción, manda la excepción; si no, manda el rol. Se escribe una sola vez
+ * porque la usan tanto el estado de la pantalla como la tarjeta que la pinta, y
+ * si las dos versiones se separaran, lo que se ve dejaría de ser lo que pasa.
+ */
+export function resolveEffective(state: OverrideState, inherited: boolean): boolean {
+  if (state === 'grant') return true
+  if (state === 'deny') return false
+  return inherited
 }
 
 /** Clave estable de una celda módulo × acción. */

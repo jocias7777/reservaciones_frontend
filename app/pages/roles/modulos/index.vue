@@ -46,6 +46,46 @@ const columns: TableColumn<PermissionModule>[] = [
   { accessorKey: 'description', header: 'Descripción' },
   { accessorKey: 'created_at', header: 'Creado' }
 ]
+
+/**
+ * La tabla contrastada con el código: qué módulos comprueba de verdad el backend
+ * (`GET /permissions/available-actions`, que sale del registro que llena
+ * `require_permission`) frente a los que están dados de alta.
+ *
+ * Se piden todos los módulos, no los de la página actual, para que el aviso no
+ * dependa de por dónde vaya el listado.
+ */
+const { data: audit } = useAsyncData(
+  'modules:audit',
+  async () => {
+    const [enforced, registered] = await Promise.all([
+      modulesApi.availableActions().catch(() => ({})),
+      modulesApi.list().catch(() => [])
+    ])
+
+    return {
+      enforcedCodes: Object.keys(enforced),
+      registeredCodes: registered.map(module => module.code)
+    }
+  },
+  {
+    server: false,
+    default: (): { enforcedCodes: string[], registeredCodes: string[] } =>
+      ({ enforcedCodes: [], registeredCodes: [] })
+  }
+)
+
+/**
+ * Módulos que el backend exige y que nadie ha dado de alta: mientras falten, ese
+ * permiso no se le puede conceder a ningún rol y solo el superadmin pasa.
+ */
+const missingCodes = computed(() =>
+  audit.value.enforcedCodes.filter(code => !audit.value.registeredCodes.includes(code))
+)
+
+/** Un módulo dado de alta que todavía no protege ninguna ruta no hace nada. */
+const isUnused = (module: PermissionModule) =>
+  audit.value.enforcedCodes.length > 0 && !audit.value.enforcedCodes.includes(module.code)
 </script>
 
 <template>
@@ -63,6 +103,26 @@ const columns: TableColumn<PermissionModule>[] = [
       :error="error"
       title="No se pudieron cargar los módulos"
       @retry="refresh"
+    />
+
+    <!--
+      El backend comprueba estos códigos en sus rutas, pero no existen como
+      módulo: no hay forma de concedérselos a un rol.
+    -->
+    <UAlert
+      v-for="code in missingCodes"
+      :key="code"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      :title="`Falta dar de alta el módulo «${code}»`"
+      description="El backend protege rutas con este código, pero no está en la lista: mientras no exista, ese permiso no se le puede conceder a ningún rol y solo el superadmin puede entrar."
+      :actions="[{
+        label: 'Darlo de alta',
+        color: 'warning',
+        variant: 'outline',
+        to: `/roles/modulos/nuevo?code=${code}`
+      }]"
     />
 
     <BaseListToolbar
@@ -89,6 +149,19 @@ const columns: TableColumn<PermissionModule>[] = [
             </p>
             <span class="text-xs text-muted">{{ row.original.code }}</span>
           </div>
+
+          <!-- Existe en la tabla, pero ninguna ruta lo comprueba todavía. -->
+          <UTooltip
+            v-if="isUnused(row.original)"
+            text="Ninguna ruta del backend usa este código todavía, así que sus permisos no restringen nada"
+          >
+            <UBadge
+              label="Sin uso en el código"
+              color="neutral"
+              variant="subtle"
+              icon="i-lucide-unplug"
+            />
+          </UTooltip>
         </div>
       </template>
 

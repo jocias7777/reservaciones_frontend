@@ -25,14 +25,30 @@ export function useAuthSession() {
     ...(remember.value ? { maxAge: REMEMBER_MAX_AGE } : {})
   })
 
+  /**
+   * Guarda un token con las opciones de ESTE momento.
+   *
+   * `useCookie` congela sus opciones al crear la referencia, y "Mantener la
+   * sesión abierta" se marca en el mismo formulario de acceso: la referencia de
+   * lectura ya existía cuando se elige, así que escribir por ella dejaba
+   * siempre una cookie de sesión y la casilla no servía de nada. Por eso aquí
+   * se pide una referencia nueva solo para escribir.
+   */
+  function writeToken(name: string, value: string | null) {
+    useCookie<string | null>(name, cookieOptions()).value = value
+  }
+
+  // `watch: false`: estas referencias mantienen el estado en memoria (de ahí
+  // sale `isAuthenticated`) pero no reescriben la cookie por su cuenta, que es
+  // trabajo de `writeToken` y de sus opciones al día.
   const accessToken = useCookie<string | null>('rsv_access_token', {
     default: () => null,
-    ...cookieOptions()
+    watch: false
   })
 
   const refreshToken = useCookie<string | null>('rsv_refresh_token', {
     default: () => null,
-    ...cookieOptions()
+    watch: false
   })
 
   const user = useState<SessionUser | null>('auth:user', () => null)
@@ -40,13 +56,18 @@ export function useAuthSession() {
   const isAuthenticated = computed(() => Boolean(accessToken.value))
 
   function setTokens(tokens: { access_token: string, refresh_token?: string }) {
+    writeToken('rsv_access_token', tokens.access_token)
     accessToken.value = tokens.access_token
+
     if (tokens.refresh_token) {
+      writeToken('rsv_refresh_token', tokens.refresh_token)
       refreshToken.value = tokens.refresh_token
     }
   }
 
   function clear() {
+    writeToken('rsv_access_token', null)
+    writeToken('rsv_refresh_token', null)
     accessToken.value = null
     refreshToken.value = null
     user.value = null

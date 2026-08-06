@@ -17,7 +17,6 @@ useSeoMeta({ title: 'Acciones' })
  */
 const actionsApi = useActionsApi()
 const modulesApi = useModulesApi()
-const notify = useNotify()
 
 /**
  * En qué módulos comprueba el backend cada acción.
@@ -85,39 +84,13 @@ const columns: TableColumn<Action>[] = [
   { id: 'row-actions' }
 ]
 
-const rowSelection = ref<Record<string, boolean>>({})
-const selectedIds = computed(() => Object.keys(rowSelection.value).filter(id => rowSelection.value[id]))
-
-const removing = ref(false)
-
-async function removeAction(action: Action) {
-  removing.value = true
-  try {
-    await actionsApi.remove(action.id)
-    notify.success('Acción eliminada', `«${action.name}» ya no aparece en la matriz de permisos.`)
-    await refresh()
-  } catch (err) {
-    notify.error(err, 'No se pudo eliminar')
-  } finally {
-    removing.value = false
-  }
-}
-
-async function removeSelected() {
-  const count = selectedIds.value.length
-  removing.value = true
-
-  try {
-    await actionsApi.bulkRemove(selectedIds.value)
-    notify.success('Acciones eliminadas', `${count} acción(es) pasaron a la papelera.`)
-    rowSelection.value = {}
-    await refresh()
-  } catch (err) {
-    notify.error(err, 'No se pudo eliminar')
-  } finally {
-    removing.value = false
-  }
-}
+const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useResourceRemoval<Action>({
+  remove: action => actionsApi.remove(action.id),
+  bulkRemove: ids => actionsApi.bulkRemove(ids),
+  refresh,
+  successOne: action => ['Acción eliminada', `«${action.name}» ya no aparece en la matriz de permisos.`],
+  successMany: count => ['Acciones eliminadas', `${count} acción(es) pasaron a la papelera.`]
+})
 </script>
 
 <template>
@@ -127,13 +100,6 @@ async function removeSelected() {
       description="Lo que se puede permitir o negar sobre cada módulo del sistema."
     >
       <template #actions>
-        <UButton
-          label="Categorías"
-          icon="i-lucide-shapes"
-          color="neutral"
-          variant="outline"
-          to="/roles/categorias"
-        />
         <UButton v-bind="addAction" />
       </template>
     </BasePageHeader>
@@ -274,7 +240,7 @@ async function removeSelected() {
             title="¿Eliminar esta acción?"
             :description="`«${row.original.name}» dejará de aparecer en la matriz de permisos. Si está concedida en algún permiso, primero hay que quitarla de ahí.`"
             :loading="removing"
-            @confirm="removeAction(row.original)"
+            @confirm="removeOne(row.original)"
           >
             <UButton
               icon="i-lucide-trash-2"

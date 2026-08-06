@@ -45,12 +45,33 @@ function withSerializedBody(options?: FetchOptions<'json'>): FetchOptions<'json'
 }
 
 /**
+ * Si el problema es del token de acceso y merece la pena renovarlo.
+ *
+ * Lo normal es un 401: el token caducó. Pero cuando la cookie llega rota
+ * (truncada o editada a mano) el backend contesta 422, y hay que distinguirlo de
+ * los 422 de validación de la propia API: flask-jwt-extended responde con su
+ * formato `{ msg }` y la aplicación siempre con `{ error }`
+ * (`app/utils/response.py`). Sin esa distinción, una cookie corrupta dejaba
+ * todas las pantallas mostrando «422» sin forma de recuperarse.
+ */
+function isTokenProblem(error: unknown): boolean {
+  const response = (error as FetchError<{ msg?: string, error?: string }>).response
+
+  if (!response) return false
+  if (response.status === 401) return true
+
+  const body = response._data as { msg?: string, error?: string } | undefined
+  return response.status === 422 && typeof body?.msg === 'string' && body.error === undefined
+}
+
+/**
  * Cliente HTTP único de la aplicación (patrón "custom $fetch" de la
  * documentación de Nuxt: https://nuxt.com/docs/guide/recipes/custom-usefetch).
  *
  * Responsabilidades:
  *  - añadir `Authorization: Bearer <access_token>` en cada petición;
- *  - ante un 401, renovar la sesión con `POST /auth/refresh` y reintentar UNA vez;
+ *  - si el token ya no sirve, renovar la sesión con `POST /auth/refresh` y
+ *    reintentar UNA vez;
  *  - si la renovación falla, limpiar la sesión y mandar al login.
  */
 export default defineNuxtPlugin(() => {
@@ -105,10 +126,9 @@ export default defineNuxtPlugin(() => {
     try {
       return await http<T>(request, options)
     } catch (error) {
-      const status = (error as FetchError).response?.status
       const isAuthCall = typeof request === 'string' && request.startsWith('/auth/')
 
-      if (status !== 401 || isAuthCall || !session.refreshToken.value) {
+      if (!isTokenProblem(error) || isAuthCall || !session.refreshToken.value) {
         throw error
       }
 

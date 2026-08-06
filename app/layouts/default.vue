@@ -2,8 +2,9 @@
 /**
  * Layout de la plantilla original (Nuxt UI Starter).
  *
- * Se conserva tal cual estaba en `app.vue` para que la portada (`pages/index.vue`)
- * siga viéndose igual. Las pantallas del panel usan el layout `app`.
+ * Se conserva tal cual estaba en `app.vue` para que su portada siga viéndose
+ * igual; ahora vive en `pages/plantilla.vue`, porque la raíz del sitio es la
+ * entrada al panel. Las pantallas del panel usan el layout `app`.
  */
 </script>
 
@@ -11,7 +12,8 @@
   <div>
     <UHeader>
       <template #left>
-        <NuxtLink to="/">
+        <!-- Al inicio de la propia plantilla: la raíz del sitio es el panel. -->
+        <NuxtLink to="/plantilla">
           <AppLogo class="w-auto h-6 shrink-0" />
         </NuxtLink>
 

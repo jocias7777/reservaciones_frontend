@@ -11,14 +11,17 @@ import type { CreatePermissionModulePayload } from '~/types'
 const props = withDefaults(defineProps<{
   /** Id del `<form>`: lo usa el botón de guardar, que vive en la cabecera. */
   id?: string
+  /** Código con el que llega el formulario relleno (alta de un módulo que el backend ya exige). */
+  code?: string
 }>(), {
-  id: 'module-form'
+  id: 'module-form',
+  code: ''
 })
 
 const emit = defineEmits<{ submit: [payload: CreatePermissionModulePayload] }>()
 
 const state = reactive({
-  code: '',
+  code: props.code,
   name: '',
   description: ''
 })

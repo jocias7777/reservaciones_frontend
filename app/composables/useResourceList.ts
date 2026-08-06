@@ -91,7 +91,7 @@ export function useResourceList<T>(options: UseResourceListOptions<T>) {
 
   const items = computed<T[]>(() => data.value?.items ?? [])
   const total = computed(() => data.value?.total ?? 0)
-  const pending = computed(() => status.value === 'pending')
+  const pending = usePendingAfterHydration(status)
   /** Hay filtros activos: distingue "no hay nada" de "no hay resultados". */
   const isFiltered = computed(() => Boolean(search.value))
 

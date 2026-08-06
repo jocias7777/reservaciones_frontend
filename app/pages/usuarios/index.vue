@@ -17,8 +17,6 @@ const rowAction = {
   ui: { leadingIcon: 'size-5' }
 } satisfies ButtonProps
 
-const notify = useNotify()
-
 /** Acción principal de la pantalla: la misma en la cabecera y en el estado vacío. */
 const addUser: ButtonProps = {
   label: 'Agregar usuario',
@@ -64,39 +62,13 @@ const columns: TableColumn<UserWithRelations>[] = [
 ]
 
 /** Con `getRowId` las claves de la selección son los ids reales, no el índice. */
-const rowSelection = ref<Record<string, boolean>>({})
-const selectedIds = computed(() => Object.keys(rowSelection.value).filter(id => rowSelection.value[id]))
-
-const removing = ref(false)
-
-async function removeUser(user: UserWithRelations) {
-  removing.value = true
-  try {
-    await usersApi.remove(user.id)
-    notify.success('Usuario eliminado', `${user.email} pasó a la papelera.`)
-    await refresh()
-  } catch (error) {
-    notify.error(error, 'No se pudo eliminar')
-  } finally {
-    removing.value = false
-  }
-}
-
-async function removeSelected() {
-  const count = selectedIds.value.length
-  removing.value = true
-
-  try {
-    await usersApi.bulkRemove(selectedIds.value)
-    notify.success('Usuarios eliminados', `${count} cuenta(s) pasaron a la papelera.`)
-    rowSelection.value = {}
-    await refresh()
-  } catch (error) {
-    notify.error(error, 'No se pudo eliminar')
-  } finally {
-    removing.value = false
-  }
-}
+const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useResourceRemoval<UserWithRelations>({
+  remove: user => usersApi.remove(user.id),
+  bulkRemove: ids => usersApi.bulkRemove(ids),
+  refresh,
+  successOne: user => ['Usuario eliminado', `${user.email} pasó a la papelera.`],
+  successMany: count => ['Usuarios eliminados', `${count} cuenta(s) pasaron a la papelera.`]
+})
 </script>
 
 <template>
@@ -230,20 +202,11 @@ async function removeSelected() {
             />
           </UTooltip>
 
-          <UTooltip text="Permisos del usuario">
-            <UButton
-              :to="`/usuarios/${row.original.id}/permisos`"
-              icon="i-lucide-list-checks"
-              v-bind="rowAction"
-              aria-label="Permisos del usuario"
-            />
-          </UTooltip>
-
           <BaseConfirmPopover
             title="¿Eliminar esta cuenta?"
             :description="`${row.original.email} dejará de poder iniciar sesión.`"
             :loading="removing"
-            @confirm="removeUser(row.original)"
+            @confirm="removeOne(row.original)"
           >
             <UButton
               icon="i-lucide-trash-2"

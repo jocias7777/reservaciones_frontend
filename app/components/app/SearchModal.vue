@@ -107,7 +107,7 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
         label: role.name,
         suffix: role.description ?? undefined,
         icon: 'i-lucide-shield',
-        to: `/roles/${role.id}/permisos`
+        to: `/roles/permisos?rol=${role.id}`
       }))
     })
   }
