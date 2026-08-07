@@ -181,6 +181,27 @@ export function resolveEffective(state: OverrideState, inherited: boolean): bool
   return inherited
 }
 
+/**
+ * Coincidencias del buscador de las pantallas de permisos.
+ *
+ * Se busca por lo que se ve —el nombre del módulo y la etiqueta corta de la
+ * acción— y además por el código del módulo, que es lo que se conoce cuando uno
+ * viene del backend. Una consulta vacía no filtra nada.
+ */
+export function moduleMatchesQuery(module: Pick<PermissionModule, 'name' | 'code'>, query: string): boolean {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return true
+
+  return module.name.toLowerCase().includes(needle) || module.code.toLowerCase().includes(needle)
+}
+
+export function actionMatchesQuery(action: Action, query: string): boolean {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return true
+
+  return actionLabel(action).toLowerCase().includes(needle)
+}
+
 /** Clave estable de una celda módulo × acción. */
 export function permissionKey(moduleId: string, actionId: string): string {
   return `${moduleId}::${actionId}`

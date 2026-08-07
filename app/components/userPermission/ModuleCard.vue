@@ -4,11 +4,22 @@ import type { Action, ActionCategory, OverrideState, PermissionModule } from '~/
 /**
  * Tarjeta de un módulo en los permisos de un usuario.
  *
- * A propósito NO se parece a `PermissionModuleCard`, la de los roles: allí un
- * interruptor por acción basta, porque el rol es la fuente del permiso. Aquí lo
- * que se edita son las excepciones sobre ese rol, así que cada acción necesita
- * tres datos en la misma línea —qué da el rol, qué se decide para este usuario y
- * qué queda— y eso pide una tabla, no una rejilla de interruptores.
+ * Reparte las acciones en bloques por categoría, igual que `PermissionModuleCard`
+ * —la de los roles—, y por el mismo motivo: una acción por fila no escala. El
+ * catálogo de acciones crece (leer, exportar, imprimir, eliminar masivo...) y con
+ * una fila por acción y un módulo debajo de otro la pantalla se convierte en un
+ * scroll sin fondo. En bloques, doce acciones ocupan tres filas en vez de doce.
+ *
+ * Esta tarjeta tiene que decir tres cosas por acción donde la de roles dice una,
+ * y ninguna de las tres tiene columna propia:
+ *
+ * - qué se decide para este usuario → el control segmentado;
+ * - qué queda al final → el nombre de la acción, atenuado cuando no puede;
+ * - qué concede su rol → el tooltip de la opción «Hereda», que es el único
+ *   momento en que alguien se lo pregunta («si lo dejo heredando, ¿qué pasa?»).
+ *
+ * Antes eran cuatro columnas de tabla con «Sí/No» y «Puede/No puede» escritos en
+ * cada fila. Cabían las tres cosas, pero solo cabía una acción por línea.
  */
 const props = withDefaults(defineProps<{
   module: PermissionModule
@@ -19,67 +30,100 @@ const props = withDefaults(defineProps<{
   states: Record<string, OverrideState>
   /** Lo que concede el rol del usuario, por `actionId`. */
   inherited: Record<string, boolean>
+  /** Búsqueda activa en la lista; estrecha las acciones que se pintan. */
+  query?: string
   disabled?: boolean
-  defaultOpen?: boolean
+  open?: boolean
 }>(), {
   categories: () => [],
+  query: '',
   disabled: false,
-  defaultOpen: true
+  open: false
 })
 
 const emit = defineEmits<{
-  toggle: [actionId: string, state: OverrideState]
-  setModule: [state: OverrideState]
+  'toggle': [actionId: string, state: OverrideState]
+  'setModule': [state: OverrideState]
+  'update:open': [value: boolean]
 }>()
-
-const open = ref(props.defaultOpen)
-
-const groups = computed(() => groupActions(props.actions, props.categories))
 
 const stateOf = (actionId: string): OverrideState => props.states[actionId] ?? 'inherit'
 
+const inheritedOf = (actionId: string): boolean => Boolean(props.inherited[actionId])
+
 /** Lo que de verdad podrá hacer: la excepción manda sobre el rol. */
 function effective(actionId: string): boolean {
-  return resolveEffective(stateOf(actionId), Boolean(props.inherited[actionId]))
+  return resolveEffective(stateOf(actionId), inheritedOf(actionId))
 }
 
+/**
+ * El resultado se lee en el nombre de la acción, que no es texto accesible: para
+ * el lector de pantalla se dice aparte.
+ */
+function outcomeText(actionId: string): string {
+  return effective(actionId) ? 'Puede hacerlo' : 'No puede hacerlo'
+}
+
+const moduleMatches = computed(() => moduleMatchesQuery(props.module, props.query))
+
+/**
+ * Con búsqueda activa se pintan solo las acciones que coinciden. Si lo que
+ * coincidió fue el módulo, se muestran todas: buscar «usuarios» es querer ver
+ * ese módulo entero, no ninguna de sus acciones en particular.
+ */
+const visibleActions = computed(() => {
+  if (!props.query.trim() || moduleMatches.value) return props.actions
+  return props.actions.filter(action => actionMatchesQuery(action, props.query))
+})
+
+const groups = computed(() => {
+  const all = groupActions(visibleActions.value, props.categories)
+
+  // Filtrando, un bloque vacío no es «una categoría sin acciones todavía» sino
+  // una categoría sin coincidencias, y ese aviso solo estorba.
+  return props.query.trim() && !moduleMatches.value
+    ? all.filter(group => group.actions.length)
+    : all
+})
+
+/** Los recuentos son siempre sobre el módulo entero, nunca sobre lo filtrado. */
 const exceptionCount = computed(() =>
   props.actions.filter(action => stateOf(action.id) !== 'inherit').length
 )
 
 const effectiveCount = computed(() => props.actions.filter(action => effective(action.id)).length)
 
-/** Las filas con excepción se tiñen para separarlas de lo que solo se hereda. */
-function rowClass(actionId: string): string {
-  const state = stateOf(actionId)
-  if (state === 'grant') return 'bg-success/5 ring-1 ring-inset ring-success/20'
-  if (state === 'deny') return 'bg-error/5 ring-1 ring-inset ring-error/20'
-  return ''
-}
-
-/**
- * Rejilla compartida por la cabecera de columnas y por cada fila, para que
- * queden alineadas. El `display` se pone fuera: la cabecera se oculta en móvil
- * (donde la fila se apila) y no puede llevar `grid` y `hidden` a la vez.
- *
- * Las tres últimas columnas tienen ancho FIJO y solo la primera es elástica.
- * Es lo que mantiene los botones en la misma vertical en todas las filas: cada
- * fila es su propia rejilla, así que en cuanto una columna se dimensiona por su
- * contenido, una fila con el resultado más largo arrastra sus botones fuera de
- * la vertical del resto.
- *
- * La columna del resultado es estrecha porque solo dice «Puede» o «No puede»:
- * repetir ahí el nombre de la acción («No puede eliminar masivo permanente»)
- * obligaba a reservar el ancho del texto más largo, y ese ancho se lo quitaba a
- * los botones, que acababan partiéndose en dos líneas.
- */
-const COLUMNS = 'gap-x-4 gap-y-1 lg:grid-cols-[minmax(8rem,1fr)_19rem_6.5rem] lg:items-center'
+const exceptionLabel = computed(() =>
+  exceptionCount.value === 1 ? '1 excepción' : `${exceptionCount.value} excepciones`
+)
 </script>
 
 <template>
-  <div class="border border-default rounded-lg bg-default">
-    <!-- Cabecera del módulo -->
-    <div class="flex items-center gap-3 p-4">
+  <!--
+    `UCollapsible` en lugar de un `v-if`: el cuerpo entra y sale animando su
+    altura (200 ms) en vez de aparecer de golpe, y además marca el `aria-expanded`
+    y el `aria-controls` de la cabecera sin tener que escribirlos.
+
+    Abierto o cerrado lo decide la lista, no la tarjeta: de arranque solo se abren
+    los módulos con excepciones, y una búsqueda tiene que enseñar lo que encuentra.
+
+    Su ranura por defecto se monta con `as-child`, así que ahí dentro va un único
+    elemento y nada más, ni un comentario. Ese elemento es la cabecera entera, no
+    solo la flecha: el objetivo de pulsación pasa de 36px a toda la fila, y por
+    eso la flecha ya no es un botón (uno dentro de otro no es HTML válido) sino
+    un icono que gira.
+  -->
+  <UCollapsible
+    :open="props.open"
+    class="border border-default rounded-lg bg-default"
+    :ui="{ content: 'motion-reduce:animate-none' }"
+    @update:open="emit('update:open', $event)"
+  >
+    <button
+      type="button"
+      class="flex w-full items-center gap-3 rounded-t-lg p-4 text-start transition-colors duration-150 ease-out-quint hover:bg-elevated/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"
+      :class="!props.open && 'rounded-b-lg'"
+    >
       <BaseIconTile :icon="moduleIcon(props.module)" />
 
       <div class="min-w-0 flex-1">
@@ -87,154 +131,158 @@ const COLUMNS = 'gap-x-4 gap-y-1 lg:grid-cols-[minmax(8rem,1fr)_19rem_6.5rem] lg
           {{ props.module.name }}
         </p>
         <p class="text-sm text-muted truncate">
-          <span class="text-xs">{{ props.module.code }}</span>
+          <span class="text-xs text-dimmed">{{ props.module.code }}</span>
           <template v-if="props.module.description">
             · {{ props.module.description }}
           </template>
         </p>
       </div>
 
+      <!--
+        Con los módulos plegados de arranque, esta insignia es lo único que
+        delata que aquí dentro hay algo fuera de lo normal. Se ve siempre, también
+        en móvil.
+      -->
       <UBadge
         v-if="exceptionCount"
-        :label="`${exceptionCount} excepción(es)`"
+        :label="exceptionLabel"
         color="warning"
         variant="subtle"
-        class="hidden sm:inline-flex"
+        class="shrink-0"
       />
 
-      <UBadge
-        :label="`${effectiveCount} / ${props.actions.length}`"
-        color="neutral"
-        variant="subtle"
+      <span class="shrink-0 text-sm text-muted tabular-nums whitespace-nowrap">
+        {{ effectiveCount }}<span class="text-dimmed">/{{ props.actions.length }}</span>
+        <span class="hidden sm:inline"> permisos</span>
+      </span>
+
+      <UIcon
+        name="i-lucide-chevron-down"
+        class="size-5 shrink-0 text-dimmed transition-transform duration-200 ease-out-quint motion-reduce:transition-none"
+        :class="props.open && 'rotate-180'"
       />
+    </button>
 
-      <UButton
-        :icon="open ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-        color="neutral"
-        variant="ghost"
-        :aria-label="open ? `Ocultar acciones de ${props.module.name}` : `Mostrar acciones de ${props.module.name}`"
-        @click="open = !open"
-      />
-    </div>
-
-    <div
-      v-if="open"
-      class="border-t border-default"
-    >
-      <div class="flex flex-wrap gap-2 px-4 py-2.5">
-        <UButton
-          label="Todo hereda del rol"
-          icon="i-lucide-corner-down-right"
-          color="neutral"
-          variant="subtle"
-          size="xs"
-          :disabled="props.disabled"
-          @click="emit('setModule', 'inherit')"
-        />
-        <UButton
-          label="Bloquear todo el módulo"
-          icon="i-lucide-ban"
-          color="error"
-          variant="subtle"
-          size="xs"
-          :disabled="props.disabled"
-          @click="emit('setModule', 'deny')"
-        />
-      </div>
-
-      <div class="px-4 pb-4 space-y-3">
-        <!-- Cabecera de columnas: en móvil cada fila lleva sus propias etiquetas. -->
-        <div
-          class="hidden lg:grid px-2 pb-1.5 border-b border-default text-xs font-semibold uppercase tracking-wide text-dimmed"
-          :class="COLUMNS"
-        >
-          <span>Acción</span>
-          <span>Para este usuario</span>
-          <span>Resultado</span>
+    <template #content>
+      <div class="border-t border-default">
+        <div class="flex flex-wrap gap-2 px-4 py-2.5">
+          <UButton
+            label="Todo hereda del rol"
+            icon="i-lucide-corner-down-right"
+            color="neutral"
+            variant="subtle"
+            size="xs"
+            :disabled="props.disabled"
+            @click="emit('setModule', 'inherit')"
+          />
+          <UButton
+            label="Bloquear todo el módulo"
+            icon="i-lucide-ban"
+            color="error"
+            variant="subtle"
+            size="xs"
+            :disabled="props.disabled"
+            @click="emit('setModule', 'deny')"
+          />
         </div>
 
-        <div
-          v-for="group in groups"
-          :key="group.id || 'sin-categoria'"
-          class="space-y-0.5"
-        >
-          <div class="flex items-center gap-2 px-2 pt-1">
-            <UIcon
-              :name="group.icon"
-              class="size-3.5 text-dimmed"
-            />
-            <p class="text-xs font-semibold uppercase tracking-wide text-muted">
-              {{ group.label }}
-            </p>
-            <p
-              v-if="group.description"
-              class="text-xs text-dimmed hidden sm:block"
-            >
-              · {{ group.description }}
-            </p>
-          </div>
+        <!--
+          Tres bloques por fila, no cuatro como en la tarjeta de roles: allí cada
+          acción lleva un interruptor y aquí un control de tres posiciones, que es
+          el doble de ancho.
 
-          <!-- Categoría recién creada: se ve que existe, aunque aún esté vacía. -->
-          <p
-            v-if="!group.actions.length"
-            class="px-2 py-1.5 text-sm text-dimmed"
-          >
-            Sin acciones todavía
-          </p>
+          Es flex y no grid a propósito: con `grid-cols-3` las columnas existen
+          aunque estén vacías, así que dos categorías quedarían pegadas a la
+          izquierda con un hueco muerto a la derecha.
 
+          El separador se quita al primero DE CADA FILA (`nth-child(3n+1)`), no
+          solo al primero de todos, porque las categorías se administran y pueden
+          ser tantas como haga falta. Se le quita la línea pero NO el hueco: el
+          ancho incluye el relleno (`border-box`), así que dejarlo sin relleno le
+          daría al primer bloque de cada fila más sitio que a los demás.
+        -->
+        <div class="flex flex-wrap justify-center gap-x-6 gap-y-8 px-4 pb-5 lg:gap-x-8">
           <div
-            v-for="action in group.actions"
-            :key="action.id"
-            class="grid grid-cols-1 rounded-md px-2 py-1"
-            :class="[COLUMNS, rowClass(action.id)]"
+            v-for="group in groups"
+            :key="group.id || 'sin-categoria'"
+            class="min-w-0 w-full space-y-3 sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1.334rem)] lg:border-s lg:border-default lg:ps-8 lg:[&:nth-child(3n+1)]:border-s-0"
           >
-            <!-- Acción -->
-            <span class="inline-flex items-center gap-1.5 text-sm text-highlighted">
-              {{ actionLabel(action) }}
-
-              <UTooltip
-                v-if="actionHint(action)"
-                :text="actionHint(action)"
-              >
-                <UIcon
-                  name="i-lucide-circle-help"
-                  class="size-4 text-dimmed"
-                />
-              </UTooltip>
-
+            <div class="flex items-center gap-2">
               <UIcon
-                v-if="isIrreversibleAction(action)"
-                name="i-lucide-triangle-alert"
-                class="size-4 text-error"
-                aria-label="Acción irreversible"
+                :name="group.icon"
+                class="size-4 shrink-0 text-dimmed"
               />
-            </span>
+              <div class="min-w-0">
+                <p class="text-xs font-semibold uppercase tracking-wide text-muted">
+                  {{ group.label }}
+                </p>
+                <p
+                  v-if="group.description"
+                  class="text-xs text-dimmed"
+                >
+                  {{ group.description }}
+                </p>
+              </div>
+            </div>
 
-            <!-- Lo que se decide para este usuario -->
-            <UserPermissionOverrideControl
-              :model-value="stateOf(action.id)"
-              :label="`${actionLabel(action)} en ${props.module.name}`"
-              :disabled="props.disabled"
-              @update:model-value="emit('toggle', action.id, $event)"
-            />
-
-            <!--
-              Lo que queda tras aplicar la excepción. Solo «Puede» o «No puede»:
-              de qué acción se trata ya lo dice la primera columna.
-            -->
-            <span
-              class="inline-flex items-center gap-1 text-sm font-medium"
-              :class="effective(action.id) ? 'text-success' : 'text-error'"
+            <!-- Categoría recién creada: se ve que existe, aunque aún esté vacía. -->
+            <p
+              v-if="!group.actions.length"
+              class="text-sm text-dimmed"
             >
-              <UIcon
-                :name="effective(action.id) ? 'i-lucide-circle-check' : 'i-lucide-circle-slash'"
-                class="size-4 shrink-0"
-              />
-              {{ effective(action.id) ? 'Puede' : 'No puede' }}
-            </span>
+              Sin acciones todavía
+            </p>
+
+            <div class="space-y-1.5">
+              <div
+                v-for="action in group.actions"
+                :key="action.id"
+                class="flex items-center gap-2"
+              >
+                <UserPermissionOverrideControl
+                  :model-value="stateOf(action.id)"
+                  :inherited="inheritedOf(action.id)"
+                  :label="`${actionLabel(action)} en ${props.module.name}`"
+                  :disabled="props.disabled"
+                  @update:model-value="emit('toggle', action.id, $event)"
+                />
+
+                <!--
+                  El resultado vive aquí: atenuado = no puede. No se trunca a
+                  propósito; un nombre de permiso cortado a media palabra
+                  («Eliminar masivo perman…») es justo el sitio donde no conviene
+                  adivinar.
+                -->
+                <span
+                  class="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm transition-colors duration-200 ease-out-quint motion-reduce:transition-none"
+                  :class="effective(action.id) ? 'text-highlighted' : 'text-dimmed'"
+                >
+                  {{ actionLabel(action) }}
+
+                  <UTooltip
+                    v-if="actionHint(action)"
+                    :text="actionHint(action)"
+                  >
+                    <UIcon
+                      name="i-lucide-circle-help"
+                      class="size-4 shrink-0 text-dimmed"
+                    />
+                  </UTooltip>
+
+                  <UIcon
+                    v-if="isIrreversibleAction(action)"
+                    name="i-lucide-triangle-alert"
+                    class="size-4 shrink-0 text-error"
+                    aria-label="Acción irreversible"
+                  />
+
+                  <span class="sr-only">{{ outcomeText(action.id) }}</span>
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </UCollapsible>
 </template>

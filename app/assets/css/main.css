@@ -4,6 +4,17 @@
 @theme static {
   --font-sans: 'Public Sans', sans-serif;
 
+  /*
+   * Las curvas que trae CSS (`ease-out` y compañía) son demasiado flojas: el
+   * movimiento arranca sin fuerza y la interfaz se siente lenta aunque dure lo
+   * mismo. Esta sale disparada y frena al final, que es lo que hace que un
+   * cambio de estado se lea como instantáneo.
+   *
+   * Nunca `ease-in` en la interfaz: retrasa justo el primer tramo, que es el
+   * que el usuario está mirando.
+   */
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+
   --color-green-50: #EFFDF5;
   --color-green-100: #D9FBE8;
   --color-green-200: #B3F5D1;
