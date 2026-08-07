@@ -1,9 +1,13 @@
 <script setup lang="ts">
 /**
- * Barra fija con el estado de los cambios pendientes.
+ * Pie fijo con el estado de los cambios pendientes.
  *
  * Los interruptores no guardan al instante: se acumulan y se envían juntos, así
- * que hace falta un lugar visible que diga cuántos cambios hay sin guardar.
+ * que hace falta un sitio que diga cuántos hay sin guardar y desde dónde
+ * enviarlos. Va anclado al borde inferior de la ventana y no al final del
+ * contenido: plegando los módulos la página se queda corta, y una barra pegada
+ * al contenido subía hasta la mitad de la pantalla, donde ya no parece un pie
+ * sino algo suelto.
  */
 const props = withDefaults(defineProps<{
   changeCount: number
@@ -19,14 +23,39 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ discard: [], save: [] }>()
 
 const isDirty = computed(() => props.changeCount > 0)
+
+/** El desglose solo se dice cuando aporta: con un único signo sobra el paréntesis. */
+const breakdown = computed(() => {
+  const partes: string[] = []
+  if (props.addedCount) partes.push(`+${props.addedCount}`)
+  if (props.removedCount) partes.push(`−${props.removedCount}`)
+  return partes.join(' ')
+})
 </script>
 
 <template>
-  <div class="sticky bottom-4 z-10">
-    <div
-      class="flex flex-col gap-3 rounded-lg border p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between"
-      :class="isDirty ? 'border-primary/40 bg-primary/5' : 'border-default bg-default/90'"
-    >
+  <!--
+    Reserva el hueco del pie. Al estar fijo se sale del flujo y, sin esto,
+    taparía la última tarjeta justo cuando se llega abajo del todo.
+
+    En pantallas estrechas el estado y los botones se apilan y el pie pasa de
+    60 a 92 px, así que ahí hace falta más hueco.
+  -->
+  <div
+    aria-hidden="true"
+    class="h-28 sm:h-20"
+  />
+
+  <div
+    class="fixed inset-x-0 bottom-0 z-20 border-t backdrop-blur transition-colors duration-200 ease-out-quint motion-reduce:transition-none"
+    :class="isDirty ? 'border-primary/30 bg-primary/5' : 'border-default bg-default/85'"
+  >
+    <!--
+      El contenido se alinea con el de la página (mismo contenedor), para que el
+      estado arranque justo bajo la primera tarjeta y los botones queden a la
+      altura del borde derecho, no flotando en medio de la nada.
+    -->
+    <UContainer class="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div class="flex items-center gap-2 text-sm">
         <UIcon
           :name="isDirty ? 'i-lucide-circle-alert' : 'i-lucide-check'"
@@ -39,10 +68,10 @@ const isDirty = computed(() => props.changeCount > 0)
           class="text-highlighted"
         >
           {{ props.changeCount }} cambio(s) sin guardar
-          <span class="text-muted">
-            (<template v-if="props.addedCount">+{{ props.addedCount }} </template>
-            <template v-if="props.removedCount">−{{ props.removedCount }}</template>)
-          </span>
+          <span
+            v-if="breakdown"
+            class="text-muted tabular-nums"
+          >({{ breakdown }})</span>
         </span>
         <span
           v-else
@@ -67,6 +96,6 @@ const isDirty = computed(() => props.changeCount > 0)
           @click="emit('save')"
         />
       </div>
-    </div>
+    </UContainer>
   </div>
 </template>

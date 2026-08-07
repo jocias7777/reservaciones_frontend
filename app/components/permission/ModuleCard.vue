@@ -24,16 +24,10 @@ const props = withDefaults(defineProps<{
    */
   inherited?: Record<string, boolean> | null
   disabled?: boolean
-  /**
-   * Cerrada salvo que digan lo contrario. Quién arranca abierto lo decide la
-   * lista, que es la única que sabe qué lugar ocupa cada módulo.
-   */
-  defaultOpen?: boolean
 }>(), {
   categories: () => [],
   inherited: null,
-  disabled: false,
-  defaultOpen: false
+  disabled: false
 })
 
 const emit = defineEmits<{
@@ -41,7 +35,11 @@ const emit = defineEmits<{
   toggleModule: [value: boolean]
 }>()
 
-const open = ref(props.defaultOpen)
+/**
+ * Plegada de entrada. Con la lista completa a la vista se elige a qué módulo
+ * entrar; abierta de arranque, la primera pantalla ya es un scroll.
+ */
+const open = ref(false)
 
 const groups = computed(() => groupActions(props.actions, props.categories))
 

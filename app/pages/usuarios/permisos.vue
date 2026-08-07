@@ -133,6 +133,9 @@ const userName = computed(() =>
   fullName(data.value?.user.profile) ?? data.value?.user.username ?? data.value?.user.email ?? 'Usuario'
 )
 
+/** Todas las celdas de la matriz: sobre esto se mide cuánto puede hacer. */
+const totalCombinations = computed(() => editor.modules.value.length * editor.actions.value.length)
+
 const loading = usePendingAfterHydration(status)
 const loadingUser = computed(() => Boolean(selectedUserId.value) && loading.value)
 
@@ -289,65 +292,19 @@ async function save() {
         />
 
         <!-- Resumen: lo que importa aquí son las excepciones, no cuántos permisos hay -->
-        <div class="border border-default rounded-lg bg-default divide-y divide-default">
-          <div class="flex flex-wrap items-start gap-3 p-4 sm:p-5">
-            <BaseIconTile
-              icon="i-lucide-circle-user"
-              size="lg"
-            />
-
-            <div class="min-w-0 flex-1">
-              <p class="text-xs font-semibold uppercase tracking-wide text-dimmed">
-                Usuario
-              </p>
-              <p class="text-lg font-semibold text-highlighted truncate">
-                {{ userName }}
-              </p>
-              <p class="text-sm text-muted truncate">
-                {{ data.user.email }}
-              </p>
-            </div>
-
-            <UButton
-              label="Todo hereda del rol"
-              icon="i-lucide-rotate-ccw"
-              color="neutral"
-              variant="outline"
-              :disabled="saving || !editor.exceptionCount.value"
-              @click="editor.resetAllToInherit"
-            />
-          </div>
-
-          <div class="flex flex-wrap items-center gap-2 px-4 py-3 sm:px-5">
-            <UBadge
-              :label="data.role
-                ? `Hereda ${editor.inheritedCount.value} permiso(s) de «${data.role.name}»`
-                : 'Sin rol: no hereda ningún permiso'"
-              color="neutral"
-              variant="subtle"
-              icon="i-lucide-corner-down-right"
-            />
-            <UBadge
-              :label="`${editor.grantCount.value} concedida(s)`"
-              :color="editor.grantCount.value ? 'success' : 'neutral'"
-              variant="subtle"
-              icon="i-lucide-check"
-            />
-            <UBadge
-              :label="`${editor.denyCount.value} bloqueada(s)`"
-              :color="editor.denyCount.value ? 'error' : 'neutral'"
-              variant="subtle"
-              icon="i-lucide-ban"
-            />
-            <UBadge
-              :label="`${editor.effectiveCount.value} permiso(s) efectivo(s)`"
-              color="neutral"
-              variant="subtle"
-              icon="i-lucide-shield-check"
-              class="ms-auto"
-            />
-          </div>
-        </div>
+        <UserPermissionSummary
+          :user-name="userName"
+          :email="data.user.email"
+          :role-name="data.role?.name ?? null"
+          :inherited-count="editor.inheritedCount.value"
+          :grant-count="editor.grantCount.value"
+          :deny-count="editor.denyCount.value"
+          :effective-count="editor.effectiveCount.value"
+          :total="totalCombinations"
+          :exception-count="editor.exceptionCount.value"
+          :disabled="saving"
+          @reset-all="editor.resetAllToInherit"
+        />
 
         <UEmpty
           v-if="!editor.modules.value.length"

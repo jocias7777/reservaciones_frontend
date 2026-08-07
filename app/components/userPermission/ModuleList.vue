@@ -8,11 +8,11 @@ import type { Action, ActionCategory, OverrideState, PermissionModule } from '~/
  * carga con el problema de escala de la pantalla: los módulos crecen con la
  * aplicación y la lista entera abierta es un scroll sin fondo. Por eso vive aquí
  * lo que decide QUÉ se ve: el buscador, el filtro de excepciones y qué tarjetas
- * arrancan abiertas.
+ * están abiertas.
  *
- * El estado de apertura lo lleva la lista y no cada tarjeta porque hay dos cosas
- * que solo se pueden decidir viendo el conjunto: abrir de entrada únicamente los
- * módulos con excepciones, y abrir lo que encuentre una búsqueda.
+ * El estado de apertura lo lleva la lista y no cada tarjeta porque hay cosas que
+ * solo se pueden decidir viendo el conjunto: abrir de golpe lo que encuentre una
+ * búsqueda, o plegarlo y desplegarlo todo con un botón.
  */
 const props = withDefaults(defineProps<{
   modules: PermissionModule[]
@@ -72,17 +72,18 @@ function setOpen(moduleId: string, open: boolean) {
 }
 
 /**
- * De arranque solo se abren los módulos con excepciones. Plegar todo y no abrir
- * nada escondería justo lo que hay que revisar; abrirlo todo es la pantalla que
- * estamos intentando arreglar.
+ * Todos los módulos arrancan plegados: así se ve la lista entera de un vistazo
+ * y se abre el que se venía a tocar, en lugar de caer en medio de un scroll.
+ *
+ * Lo que hay que revisar no se esconde por eso: cada cabecera lleva su insignia
+ * de excepciones y su recuento, que es lo que dice dónde mirar sin desplegar
+ * nada. Y el buscador abre por su cuenta lo que encuentra.
  *
  * Se reinicia cuando cambian los módulos, que es lo que pasa al recargar los
  * datos después de guardar.
  */
-watch(() => props.modules, (modules) => {
-  openIds.value = new Set(
-    modules.filter(module => exceptionCountOf(module.id) > 0).map(module => module.id)
-  )
+watch(() => props.modules, () => {
+  openIds.value = new Set()
 }, { immediate: true })
 
 // Una búsqueda tiene que enseñar lo que encuentra: no vale devolver tarjetas

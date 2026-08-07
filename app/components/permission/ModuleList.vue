@@ -31,8 +31,13 @@ const emit = defineEmits<{
 
 <template>
   <div class="space-y-4">
+    <!--
+      Todas plegadas de entrada: la lista de módulos se ve de un vistazo y se
+      abre el que se venía a tocar. Cada cabecera lleva su recuento, que es lo
+      que dice dónde mirar sin desplegar nada.
+    -->
     <PermissionModuleCard
-      v-for="(module, index) in props.modules"
+      v-for="module in props.modules"
       :key="module.id"
       :module="module"
       :actions="props.actions"
@@ -40,7 +45,6 @@ const emit = defineEmits<{
       :values="props.values[module.id] ?? {}"
       :inherited="props.inherited?.[module.id] ?? null"
       :disabled="props.disabled"
-      :default-open="index === 0"
       @toggle="(actionId, value) => emit('toggle', module.id, actionId, value)"
       @toggle-module="value => emit('toggleModule', module.id, value)"
     />
