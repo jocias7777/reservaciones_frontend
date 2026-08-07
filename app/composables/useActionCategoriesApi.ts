@@ -4,6 +4,8 @@ import type {
   ApiEnvelope,
   CreateActionCategoryPayload,
   PaginatedResult,
+  SelectOptionsParams,
+  SelectOptionsResult,
   UpdateActionCategoryPayload
 } from '~/types'
 
@@ -19,16 +21,26 @@ import type {
 export function useActionCategoriesApi() {
   const api = useApi()
 
-  return {
-    /** `GET /action-categories` — catálogo completo, base de la matriz de permisos. */
-    list: () => listOrEmpty(unwrap(api<ApiEnvelope<ActionCategory[]>>('/action-categories'))),
+  /** `QUERY /action-categories` — búsqueda avanzada. Expand disponible: `actions`. Exige `list`. */
+  const query = (query: AdvancedQuery = {}) =>
+    unwrap(api<ApiEnvelope<PaginatedResult<ActionCategory>>>('/action-categories', {
+      method: 'QUERY',
+      body: query
+    }))
 
-    /** `QUERY /action-categories` — búsqueda avanzada. Expand disponible: `actions`. */
-    query: (query: AdvancedQuery = {}) =>
-      unwrap(api<ApiEnvelope<PaginatedResult<ActionCategory>>>('/action-categories', {
-        method: 'QUERY',
-        body: query
-      })),
+  return {
+    /**
+     * Catálogo completo, base de los bloques de la matriz de permisos. Va por
+     * `QUERY` porque hacen falta `description`, `icon` y `sort_order`, y
+     * `GET /action-categories` responde opciones de combo. Exige `list`.
+     */
+    list: () => listOrEmpty(fetchAllPages(query, { sortBy: 'sort_order', sortOrder: 'ASC' })),
+
+    /** `GET /action-categories?q=&limit=` — opciones para un desplegable. Exige `read`. */
+    options: (params: SelectOptionsParams = {}) =>
+      unwrap(api<ApiEnvelope<SelectOptionsResult>>('/action-categories', { query: params })),
+
+    query,
 
     /** `GET /action-categories/:id`. */
     get: (id: string) => unwrap(api<ApiEnvelope<ActionCategory>>(`/action-categories/${id}`)),

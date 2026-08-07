@@ -24,12 +24,16 @@ const props = withDefaults(defineProps<{
    */
   inherited?: Record<string, boolean> | null
   disabled?: boolean
+  /**
+   * Cerrada salvo que digan lo contrario. Quién arranca abierto lo decide la
+   * lista, que es la única que sabe qué lugar ocupa cada módulo.
+   */
   defaultOpen?: boolean
 }>(), {
   categories: () => [],
   inherited: null,
   disabled: false,
-  defaultOpen: true
+  defaultOpen: false
 })
 
 const emit = defineEmits<{
@@ -110,27 +114,6 @@ const overrideCount = computed(() =>
           @click="emit('toggleModule', !allSelected)"
         />
       </div>
-
-      <!--
-        Un bloque de acciones por categoría, como mucho cuatro por fila.
-
-        Es flex y no grid a propósito: con `grid-cols-4` las columnas existen
-        aunque estén vacías, así que tres categorías quedaban pegadas a la
-        izquierda con un hueco muerto a la derecha. Con `flex-wrap` +
-        `justify-center` solo ocupan sitio los bloques que hay, y la fila —esté
-        llena o no— queda centrada en la tarjeta.
-
-        El ancho se fija en el propio bloque (un cuarto menos su parte del
-        hueco), que es lo que mantiene los cuatro por fila y todos a la par
-        aunque uno tenga siete acciones y otro ninguna.
-
-        El separador se quita al primero DE CADA FILA (`nth-child(4n+1)`), no
-        solo al primero de todos, porque las categorías se administran y pueden
-        ser tantas como haga falta. Se le quita la línea pero NO el hueco: el
-        ancho incluye el relleno (`border-box`), así que dejarlo sin relleno le
-        daría al primer bloque de cada fila más sitio para su contenido que a
-        los demás.
-      -->
       <div
         class="flex flex-wrap justify-center gap-x-6 gap-y-8 px-4 pb-5 lg:gap-x-8"
       >

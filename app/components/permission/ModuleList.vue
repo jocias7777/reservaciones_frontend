@@ -32,7 +32,7 @@ const emit = defineEmits<{
 <template>
   <div class="space-y-4">
     <PermissionModuleCard
-      v-for="module in props.modules"
+      v-for="(module, index) in props.modules"
       :key="module.id"
       :module="module"
       :actions="props.actions"
@@ -40,6 +40,7 @@ const emit = defineEmits<{
       :values="props.values[module.id] ?? {}"
       :inherited="props.inherited?.[module.id] ?? null"
       :disabled="props.disabled"
+      :default-open="index === 0"
       @toggle="(actionId, value) => emit('toggle', module.id, actionId, value)"
       @toggle-module="value => emit('toggleModule', module.id, value)"
     />

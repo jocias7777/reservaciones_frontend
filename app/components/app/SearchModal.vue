@@ -1,16 +1,9 @@
 <script setup lang="ts">
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 
-/**
- * Buscador global. Es el único modal de la aplicación: los formularios y la
- * asignación de permisos tienen pantalla propia.
- *
- * Los resultados de usuarios y roles se piden al backend con el endpoint QUERY,
- * así que sus grupos llevan `ignoreFilter` para que el filtro difuso local no
- * vuelva a recortar lo que ya filtró el servidor.
- */
 const { isOpen, close } = useAppSearch()
 const { items: navigationItems } = useAppNavigation()
+const access = useAccessControl()
 
 const usersApi = useUsersApi()
 const rolesApi = useRolesApi()
@@ -60,28 +53,42 @@ const { data: results, status } = useAsyncData(
   }
 )
 
-const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
-  const list: CommandPaletteGroup<CommandPaletteItem>[] = [
-    {
-      id: 'navegacion',
-      label: 'Ir a',
-      items: [
-        ...navigationItems.value.map(item => ({
-          label: item.label,
-          icon: item.icon,
-          to: item.to
-        })),
-        { label: 'Agregar usuario', icon: 'i-lucide-user-round-plus', to: '/usuarios/nuevo' },
-        { label: 'Agregar rol', icon: 'i-lucide-shield-plus', to: '/roles/nuevo' },
-        { label: 'Módulos del sistema', icon: 'i-lucide-key-round', to: '/roles/modulos' },
-        { label: 'Agregar módulo', icon: 'i-lucide-package-plus', to: '/roles/modulos/nuevo' },
-        { label: 'Acciones', icon: 'i-lucide-circle-plus', to: '/roles/acciones' },
-        { label: 'Agregar acción', icon: 'i-lucide-circle-plus', to: '/roles/acciones/nueva' },
-        { label: 'Categorías de acciones', icon: 'i-lucide-shapes', to: '/roles/categorias' },
-        { label: 'Agregar categoría', icon: 'i-lucide-shapes', to: '/roles/categorias/nueva' }
-      ]
-    }
+/**
+ * Los destinos del buscador salen del mismo sitio que el menú y se recortan
+ * igual: es otra puerta a las mismas pantallas, y ofrecer aquí un módulo que no
+ * se puede abrir devuelve a la misma trampa de entrar para ver un 403.
+ *
+ * Las pantallas del menú cuelgan del apartado «Seguridad», así que hay que bajar
+ * un nivel: lo que se ofrece son sus hijos, no el apartado, que no lleva a
+ * ningún sitio por sí mismo.
+ */
+const destinations = computed<CommandPaletteItem[]>(() => {
+  const fromMenu = navigationItems.value.flatMap(item =>
+    (item.children ?? [item]).map(child => ({
+      label: String(child.label),
+      icon: child.icon,
+      to: child.to
+    }))
+  )
+
+  const shortcuts = [
+    { label: 'Agregar usuario', icon: 'i-lucide-user-round-plus', to: '/usuarios/nuevo' },
+    { label: 'Agregar rol', icon: 'i-lucide-shield-plus', to: '/roles/nuevo' },
+    { label: 'Agregar módulo', icon: 'i-lucide-package-plus', to: '/roles/modulos/nuevo' },
+    { label: 'Agregar acción', icon: 'i-lucide-circle-plus', to: '/roles/acciones/nueva' },
+    { label: 'Agregar categoría', icon: 'i-lucide-shapes', to: '/roles/categorias/nueva' }
   ]
+
+  return [...fromMenu, ...shortcuts]
+    .filter(item => typeof item.to === 'string' && access.canVisit(item.to))
+})
+
+const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
+  const list: CommandPaletteGroup<CommandPaletteItem>[] = []
+
+  if (destinations.value.length) {
+    list.push({ id: 'navegacion', label: 'Ir a', items: destinations.value })
+  }
 
   if (results.value.users.length) {
     list.push({

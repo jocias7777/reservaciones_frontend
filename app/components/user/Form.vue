@@ -67,7 +67,7 @@ watch(() => props.user, (user) => {
  */
 const { data: roles, error: rolesError } = useAsyncData(
   'roles:options',
-  () => rolesApi.list(),
+  async () => (await rolesApi.options()).items,
   { server: false, default: () => [] }
 )
 
@@ -84,8 +84,8 @@ const WITHOUT_ROLE = 'sin-rol'
 const roleItems = computed(() => [
   { label: 'Sin rol asignado', value: WITHOUT_ROLE, icon: 'i-lucide-shield-off' },
   ...(roles.value ?? []).map(role => ({
-    label: role.name,
-    value: role.id,
+    label: role.label,
+    value: role.value,
     icon: 'i-lucide-shield'
   }))
 ])

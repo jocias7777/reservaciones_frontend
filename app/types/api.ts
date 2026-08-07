@@ -26,6 +26,36 @@ export interface PaginatedResult<T> {
   groupBy: string | string[] | null
 }
 
+/** Una opción de combo tal como la devuelve `GET /<recurso>`. */
+export interface SelectOption {
+  label: string
+  value: string
+}
+
+/**
+ * Resultado de `GET /<recurso>?q=&limit=` (`BaseRepository.select_options`).
+ *
+ * Es lo que alimenta los desplegables de los formularios, y va por la acción
+ * `read` en vez de `list` justo para eso: alguien puede necesitar elegir un rol
+ * en un formulario sin tener acceso a explorar la tabla de roles.
+ *
+ * `total` es cuántas coinciden de verdad, no cuántas vinieron: el backend acota
+ * a 50 por defecto (200 como máximo) y avisa con `truncado`, para poder decir
+ * "hay más, escribe para acotar" en lugar de aparentar que están todas.
+ */
+export interface SelectOptionsResult {
+  items: SelectOption[]
+  total: number
+  limit: number
+  truncado: boolean
+}
+
+/** Parámetros de `GET /<recurso>`: `q` busca y `limit` acota. */
+export interface SelectOptionsParams {
+  q?: string
+  limit?: number
+}
+
 export type SortOrder = 'ASC' | 'DESC'
 
 /** Operadores aceptados por `filters` / `filtersOr` en la búsqueda avanzada. */

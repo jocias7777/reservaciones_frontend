@@ -5,6 +5,8 @@ import type {
   PaginatedResult,
   Role,
   RoleWithRelations,
+  SelectOptionsParams,
+  SelectOptionsResult,
   UpdateRolePayload
 } from '~/types'
 
@@ -18,8 +20,14 @@ export function useRolesApi() {
   const api = useApi()
 
   return {
-    /** `GET /roles` — lista completa, para poblar el selector de rol. */
-    list: () => listOrEmpty(unwrap(api<ApiEnvelope<Role[]>>('/roles'))),
+    /**
+     * `GET /roles?q=&limit=` — opciones para el selector de rol de un usuario.
+     *
+     * Exige `read`, no `list`: poder asignarle un rol a alguien desde un
+     * formulario no debería obligar a darle acceso a explorar la tabla de roles.
+     */
+    options: (params: SelectOptionsParams = {}) =>
+      unwrap(api<ApiEnvelope<SelectOptionsResult>>('/roles', { query: params })),
 
     /** `QUERY /roles` — búsqueda avanzada. Expand disponible: `users`. */
     query: (query: AdvancedQuery = {}) =>

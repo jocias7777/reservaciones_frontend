@@ -7,6 +7,7 @@ import type { DropdownMenuItem } from '@nuxt/ui'
  */
 const { user, logout } = useAuth()
 const usersApi = useUsersApi()
+const access = useAccessControl()
 
 // El endpoint de sesión no devuelve el perfil, así que la foto se pide aparte.
 // Si el usuario no tiene permiso de lectura sobre `users`, el menú se queda con
@@ -35,11 +36,15 @@ const items = computed<DropdownMenuItem[][]>(() => [
     avatar: photo.value ? { src: photo.value } : undefined,
     icon: photo.value ? undefined : 'i-lucide-circle-user'
   }],
-  [{
-    label: 'Mi cuenta',
-    icon: 'i-lucide-user-round',
-    to: user.value ? `/usuarios/${user.value.id}` : '/usuarios'
-  }],
+  // La ficha propia vive dentro del módulo de usuarios: sin acceso a ese módulo
+  // el enlace existía pero rebotaba, así que mejor no ofrecerlo.
+  ...(access.canVisit('/usuarios')
+    ? [[{
+        label: 'Mi cuenta',
+        icon: 'i-lucide-user-round',
+        to: user.value ? `/usuarios/${user.value.id}` : '/usuarios'
+      }]]
+    : []),
   [{
     label: 'Cerrar sesión',
     icon: 'i-lucide-log-out',

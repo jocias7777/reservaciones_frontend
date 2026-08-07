@@ -7,6 +7,7 @@ import type { LoginPayload, LoginResponse, MeResponse } from '~/types'
 export function useAuth() {
   const api = useApi()
   const session = useAuthSession()
+  const access = useAccessControl()
 
   /**
    * `POST /auth/login`. `remember` decide si las cookies sobreviven al cierre
@@ -23,6 +24,10 @@ export function useAuth() {
 
     session.setTokens(response)
     session.user.value = response.user
+
+    // Los permisos son de quien acaba de entrar, no de quien estuviera antes en
+    // este navegador.
+    access.reset()
 
     return response.user
   }
@@ -51,6 +56,7 @@ export function useAuth() {
       // Sin ruido: la sesión se cierra igual en el cliente.
     } finally {
       session.clear()
+      access.reset()
       await navigateTo('/login')
     }
   }

@@ -16,9 +16,11 @@ const { saving, save } = useSaveAction()
 const { data, status, error, refresh } = useAsyncData(
   () => `action:${actionId.value}`,
   async () => {
+    // La acción es lo que da sentido a la pantalla; las categorías solo pueblan
+    // un desplegable opcional, así que su falta de permiso no la tumba.
     const [action, categories] = await Promise.all([
       actionsApi.get(actionId.value),
-      actionCategoriesApi.list()
+      actionCategoriesApi.list().catch(() => [])
     ])
 
     return { action, categories }

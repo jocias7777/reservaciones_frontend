@@ -1,15 +1,7 @@
 <script setup lang="ts">
-/**
- * Cabecera del panel: logo a la izquierda, los módulos centrados y las acciones
- * de la sesión a la derecha (buscador, tema y usuario).
- *
- * El slot por defecto de `UHeader` es la zona central; en pantallas pequeñas se
- * oculta y su contenido pasa al menú desplegable (`#body`).
- */
 const { items } = useAppNavigation()
 const search = useAppSearch()
 
-// El buscador también se abre con ⌘K / Ctrl+K.
 defineShortcuts({
   meta_k: () => search.open()
 })
@@ -18,20 +10,18 @@ defineShortcuts({
 <template>
   <UHeader :ui="{ center: 'hidden lg:flex' }">
     <template #left>
+      <!--
+        A la raíz, no a una pantalla concreta: es el middleware quien sabe cuál
+        es la primera que puede abrir cada quien. Fijar aquí `/usuarios` dejaba
+        el logo llevando a un sitio prohibido a quien no tiene ese módulo.
+      -->
       <NuxtLink
-        to="/usuarios"
+        to="/"
         aria-label="Inicio del panel"
       >
         <AppLogo class="w-auto h-6 shrink-0" />
       </NuxtLink>
     </template>
-
-    <!--
-      `viewportWrapper` y `viewport` vienen con `w-full`, que es el ancho del
-      disparador. Con un solo apartado ("Seguridad") el panel de 240px quedaba
-      recortado por el `overflow-hidden` del visor, así que se dejan al ancho de
-      su contenido.
-    -->
     <UNavigationMenu
       :items="items"
       variant="link"

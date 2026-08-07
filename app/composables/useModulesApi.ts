@@ -4,7 +4,9 @@ import type {
   AvailableActions,
   CreatePermissionModulePayload,
   PaginatedResult,
-  PermissionModule
+  PermissionModule,
+  SelectOptionsParams,
+  SelectOptionsResult
 } from '~/types'
 
 /**
@@ -18,9 +20,28 @@ import type {
 export function useModulesApi() {
   const api = useApi()
 
+  /** `QUERY /permissions` — búsqueda avanzada (sin expands). Exige `list`. */
+  const query = (query: AdvancedQuery = {}) =>
+    unwrap(api<ApiEnvelope<PaginatedResult<PermissionModule>>>('/permissions', {
+      method: 'QUERY',
+      body: query
+    }))
+
   return {
-    /** `GET /permissions` — lista completa; base de la matriz de permisos. */
-    list: () => listOrEmpty(unwrap(api<ApiEnvelope<PermissionModule[]>>('/permissions'))),
+    /**
+     * Catálogo completo de módulos; base de la matriz de permisos.
+     *
+     * Va por `QUERY` y no por `GET` porque necesita `code`, `name` y
+     * `description` de cada módulo, y `GET /permissions` devuelve opciones de
+     * combo (`{ label, value }`). Exige la acción `list`.
+     */
+    list: () => listOrEmpty(fetchAllPages(query, { sortBy: 'name', sortOrder: 'ASC' })),
+
+    /**
+     * `GET /permissions?q=&limit=` — opciones para un desplegable. Exige `read`.
+     */
+    options: (params: SelectOptionsParams = {}) =>
+      unwrap(api<ApiEnvelope<SelectOptionsResult>>('/permissions', { query: params })),
 
     /**
      * `GET /permissions/available-actions` — qué acciones comprueba cada módulo.
@@ -31,12 +52,7 @@ export function useModulesApi() {
     availableActions: () =>
       unwrap(api<ApiEnvelope<AvailableActions>>('/permissions/available-actions')),
 
-    /** `QUERY /permissions` — búsqueda avanzada (sin expands). */
-    query: (query: AdvancedQuery = {}) =>
-      unwrap(api<ApiEnvelope<PaginatedResult<PermissionModule>>>('/permissions', {
-        method: 'QUERY',
-        body: query
-      })),
+    query,
 
     /** `POST /permissions`. */
     create: (payload: CreatePermissionModulePayload) =>

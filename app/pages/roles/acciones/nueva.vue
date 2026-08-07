@@ -12,10 +12,14 @@ const actionCategoriesApi = useActionCategoriesApi()
 const notify = useNotify()
 const { saving, save } = useSaveAction()
 
-/** Las categorías pueblan el selector del formulario. */
+/**
+ * Las categorías pueblan el selector del formulario. Sin permiso para listarlas
+ * el selector queda vacío, pero la acción se puede crear igual: la categoría es
+ * opcional y no vale tumbar el formulario entero por el desplegable.
+ */
 const { data: categories, error, refresh } = useAsyncData(
   'action-categories:for-action-form',
-  () => actionCategoriesApi.list(),
+  () => actionCategoriesApi.list().catch(() => []),
   { server: false, default: () => [] }
 )
 

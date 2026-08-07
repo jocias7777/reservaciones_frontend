@@ -4,6 +4,8 @@ import type {
   ApiEnvelope,
   CreateActionPayload,
   PaginatedResult,
+  SelectOptionsParams,
+  SelectOptionsResult,
   UpdateActionPayload
 } from '~/types'
 
@@ -20,13 +22,23 @@ import type {
 export function useActionsApi() {
   const api = useApi()
 
-  return {
-    /** `GET /actions` — catálogo completo. */
-    list: () => listOrEmpty(unwrap(api<ApiEnvelope<Action[]>>('/actions'))),
+  /** `QUERY /actions` — búsqueda avanzada. Expand disponible: `category`. Exige `list`. */
+  const query = (query: AdvancedQuery = {}) =>
+    unwrap(api<ApiEnvelope<PaginatedResult<Action>>>('/actions', { method: 'QUERY', body: query }))
 
-    /** `QUERY /actions` — búsqueda avanzada. Expand disponible: `category`. */
-    query: (query: AdvancedQuery = {}) =>
-      unwrap(api<ApiEnvelope<PaginatedResult<Action>>>('/actions', { method: 'QUERY', body: query })),
+  return {
+    /**
+     * Catálogo completo de acciones. Va por `QUERY` porque la matriz necesita
+     * `code` y `category_id` de cada una, y `GET /actions` responde opciones de
+     * combo (`{ label, value }`). Exige la acción `list`.
+     */
+    list: () => listOrEmpty(fetchAllPages(query)),
+
+    /** `GET /actions?q=&limit=` — opciones para un desplegable. Exige `read`. */
+    options: (params: SelectOptionsParams = {}) =>
+      unwrap(api<ApiEnvelope<SelectOptionsResult>>('/actions', { query: params })),
+
+    query,
 
     /** `GET /actions/:id`. */
     get: (id: string) => unwrap(api<ApiEnvelope<Action>>(`/actions/${id}`)),

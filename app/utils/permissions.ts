@@ -11,6 +11,7 @@ import type { Action, ActionCategory, OverrideState, PermissionModule } from '~/
 /** Orden canónico de las acciones (el mismo de `app/seeds.py::ACTIONS`). */
 const ACTION_ORDER = [
   'read',
+  'list',
   'create',
   'update',
   'delete',
@@ -24,6 +25,7 @@ const ACTION_ORDER = [
 /** Etiqueta corta para la interfaz (el `name` del backend es más largo). */
 const ACTION_LABELS: Record<string, string> = {
   read: 'Leer',
+  list: 'Listar',
   create: 'Crear',
   update: 'Actualizar',
   delete: 'Eliminar',
@@ -36,7 +38,10 @@ const ACTION_LABELS: Record<string, string> = {
 
 /** Qué implica cada acción, para el tooltip de ayuda. */
 const ACTION_HINTS: Record<string, string> = {
-  read: 'Ver el listado y el detalle de los registros.',
+  // `read` y `list` se separan a propósito en el backend: se puede dejar que
+  // alguien rellene formularios sin darle acceso a explorar la tabla entera.
+  read: 'Ver la ficha de un registro y elegirlo en los desplegables de un formulario.',
+  list: 'Ver el listado del módulo y buscar dentro de él.',
   create: 'Dar de alta nuevos registros.',
   update: 'Modificar registros existentes.',
   delete: 'Enviar un registro a la papelera (se puede recuperar).',
