@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UserPermission } from '~/types'
+import type { CreateUserPermissionPayload, UserPermission, UserPermissionBulkUpdateItem } from '~/types'
 
 definePageMeta({
   layout: 'app'
@@ -152,7 +152,14 @@ const userItems = computed(() =>
 
 const saving = ref(false)
 
-/** Cada celda cambiada se traduce en una sola llamada: alta, cambio o baja. */
+/**
+ * Guarda los cambios agrupados por lo que hace falta hacer con cada uno:
+ * volver a heredar se revoca con un borrado masivo, lo nuevo se concede con
+ * `bulk/create` y lo que ya existía como excepción se ajusta con
+ * `bulk/update`. Como en permisos por rol, ninguno de los dos `bulk/*` es
+ * atómico: un choque de negocio suelto no cancela el lote, sale detallado en
+ * `errores` junto con lo que sí se guardó.
+ */
 async function save() {
   if (!data.value || !editor.isDirty.value) return
 
@@ -160,35 +167,55 @@ async function save() {
 
   const userId = data.value.user.id
 
-  const operations = editor.changes.value.map((change) => {
+  const toRemoveIds: string[] = []
+  const toCreate: CreateUserPermissionPayload[] = []
+  const toUpdate: UserPermissionBulkUpdateItem[] = []
+
+  for (const change of editor.changes.value) {
     const existing = overrideByKey.value.get(change.key)
-    const { moduleId, actionId } = parsePermissionKey(change.key)
 
     // Vuelve a lo que diga el rol: la excepción ya no hace falta.
     if (change.to === 'inherit') {
-      return existing ? userPermissionsApi.remove(existing.id) : Promise.resolve()
+      if (existing) toRemoveIds.push(existing.id)
+      continue
     }
 
     const isGrant = change.to === 'grant'
 
-    // `create` reactiva la fila si estaba borrada, así que ir y volver sobre la
-    // misma celda no acumula filas.
-    return existing
-      ? userPermissionsApi.update(existing.id, { is_grant: isGrant })
-      : userPermissionsApi.create({
-          user_id: userId,
-          permission_id: moduleId,
-          action_id: actionId,
-          is_grant: isGrant
-        })
-  })
+    // Si ya existía como excepción, se ajusta; si no, se crea de cero.
+    if (existing) {
+      toUpdate.push({ id: existing.id, is_grant: isGrant })
+    } else {
+      const { moduleId, actionId } = parsePermissionKey(change.key)
+      toCreate.push({ user_id: userId, permission_id: moduleId, action_id: actionId, is_grant: isGrant })
+    }
+  }
 
   try {
-    const results = await Promise.allSettled(operations)
-    const failed = results.filter(result => result.status === 'rejected')
+    if (toRemoveIds.length) {
+      await userPermissionsApi.bulkRemove(toRemoveIds)
+    }
 
-    if (failed.length) {
-      notify.warning('Se guardó parcialmente', `${failed.length} de ${operations.length} cambios fallaron: ${apiErrorMessage((failed[0] as PromiseRejectedResult).reason)}`)
+    let failedCount = 0
+    let attemptedCount = 0
+    let firstError = ''
+
+    if (toCreate.length) {
+      const result = await userPermissionsApi.bulkCreate(toCreate)
+      failedCount += result.fallidos
+      attemptedCount += toCreate.length
+      firstError ||= result.errores[0]?.error ?? ''
+    }
+
+    if (toUpdate.length) {
+      const result = await userPermissionsApi.bulkUpdate(toUpdate)
+      failedCount += result.fallidos
+      attemptedCount += toUpdate.length
+      firstError ||= result.errores[0]?.error ?? ''
+    }
+
+    if (failedCount) {
+      notify.warning('Se guardó parcialmente', `${failedCount} de ${attemptedCount} cambios fallaron: ${firstError}`)
     } else {
       notify.success('Permisos actualizados', `Se guardaron las excepciones de ${userName.value}.`)
     }
@@ -252,9 +279,10 @@ async function save() {
 
     <template v-else-if="data">
       <!--
-        El backend protege `/user-permissions` con el módulo `user_permissions`,
-        que no viene sembrado. Sin esa fila solo el superadmin puede administrar
-        excepciones, así que se explica el alta en lugar de dejar un 403 seco.
+        El backend protege `/user-permissions` con el módulo `user_permissions`.
+        Un 403 aquí no distingue si el módulo no existe o si existe pero nadie
+        tiene sus acciones concedidas —las dos cosas responden igual—, así que
+        el aviso cubre ambas en vez de asumir una.
       -->
       <UAlert
         v-if="data.overridesForbidden"
@@ -262,12 +290,17 @@ async function save() {
         variant="subtle"
         icon="i-lucide-lock"
         title="Tu cuenta no puede leer las excepciones de permisos"
-        description="Las rutas de permisos por usuario exigen el módulo «user_permissions», que aún no existe en el sistema. Créalo con ese código exacto y actívale Leer, Crear, Actualizar y Eliminar al rol que deba administrarlos. Mientras tanto, solo un superadmin puede editar esta pantalla."
+        description="Las rutas de permisos por usuario exigen el módulo «user_permissions». Si no existe, créalo con ese código exacto desde «Módulos del sistema»; si ya existe, concédele Listar (para verlas) y Crear masivo, Actualizar masivo y Eliminar masivo (para guardarlas) al rol que deba administrarlas. Mientras tanto, solo un superadmin puede editar esta pantalla."
         :actions="[{
-          label: 'Crear el módulo',
+          label: 'Revisar módulos',
           color: 'error',
           variant: 'outline',
-          to: '/roles/modulos/nuevo'
+          to: '/roles/modulos'
+        }, {
+          label: 'Ir a permisos por rol',
+          color: 'error',
+          variant: 'outline',
+          to: '/roles/permisos'
         }]"
       />
 
@@ -278,7 +311,7 @@ async function save() {
           variant="subtle"
           icon="i-lucide-triangle-alert"
           title="Este usuario no tiene rol"
-          description="Sin rol no hereda nada: la columna «El rol da» dirá que no en todo, y lo único que le dará permisos son las excepciones que marques aquí. Asignarle un rol es lo más mantenible."
+          description="Sin rol no hereda nada: el tooltip de «Hereda» dirá que no en todo, y lo único que le dará permisos son las excepciones que marques aquí. Asignarle un rol es lo más mantenible."
           :actions="[{ label: 'Asignar rol', color: 'warning', variant: 'outline', to: `/usuarios/${data.user.id}` }]"
         />
 
@@ -288,7 +321,7 @@ async function save() {
           variant="subtle"
           icon="i-lucide-triangle-alert"
           title="No se pudo leer lo que otorga el rol"
-          description="Falta el permiso de lectura sobre los permisos de rol, así que la columna «El rol da» y la de «Resultado» no son fiables en esta pantalla. Lo que guardes se aplicará igual."
+          description="Falta el permiso `list` sobre los permisos de rol, así que el tooltip de «Hereda» y lo que se ve atenuado en cada acción no son fiables en esta pantalla. Lo que guardes se aplicará igual."
         />
 
         <!-- Resumen: lo que importa aquí son las excepciones, no cuántos permisos hay -->

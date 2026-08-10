@@ -62,8 +62,8 @@ watch(() => props.user, (user) => {
 })
 
 /**
- * Roles para el selector. Si la cuenta no tiene permiso `roles:read` el select
- * queda vacío con un aviso, en lugar de romper el formulario completo.
+ * Roles para el selector. Si la cuenta no tiene permiso `roles:select` el
+ * select queda vacío con un aviso, en lugar de romper el formulario completo.
  */
 const { data: roles, error: rolesError } = useAsyncData(
   'roles:options',

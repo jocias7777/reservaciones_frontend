@@ -1,5 +1,6 @@
+import type { FetchError } from 'ofetch'
 import type { ApiClient } from '~/plugins/api'
-import type { AdvancedQuery, ApiEnvelope, PaginatedResult } from '~/types'
+import type { AdvancedQuery, ApiEnvelope, BulkWriteResult, PaginatedResult } from '~/types'
 
 /** Cliente HTTP con la sesión ya resuelta (ver `app/plugins/api.ts`). */
 export function useApi(): ApiClient {
@@ -45,4 +46,35 @@ export async function fetchAllPages<T>(
   }
 
   return rows
+}
+
+/**
+ * Llama a un endpoint de escritura masiva (`.../bulk/create` o `.../bulk/update`).
+ *
+ * El backend valida el formato de todos los elementos antes de tocar la base
+ * —eso sí corta la petición entera, con un 400 sin envoltorio `data`— pero los
+ * choques de negocio (un duplicado, una fila que ya no existe) no cancelan el
+ * lote: se procesan uno por uno y el resultado sale siempre en el cuerpo,
+ * incluso cuando fallan TODOS. Ahí el código es 400 en vez de 201/200/207, así
+ * que `ofetch` lo trata como una excepción de red aunque traiga el desglose
+ * completo. Esta función deshace ese entuerto: si lo que llegó tiene forma de
+ * resultado de bulk, se devuelve como tal en vez de dejarlo escapar como error.
+ */
+export async function bulkWrite<Item>(
+  api: ApiClient,
+  endpoint: string,
+  method: 'POST' | 'PUT',
+  items: Item[]
+): Promise<BulkWriteResult> {
+  try {
+    return await unwrap(api<ApiEnvelope<BulkWriteResult>>(endpoint, { method, body: { items } }))
+  } catch (error) {
+    const body = (error as FetchError<ApiEnvelope<BulkWriteResult>>)?.data
+
+    if (body?.data && typeof body.data === 'object' && 'errores' in body.data) {
+      return body.data
+    }
+
+    throw error
+  }
 }

@@ -34,7 +34,7 @@ export function useActionsApi() {
      */
     list: () => listOrEmpty(fetchAllPages(query)),
 
-    /** `GET /actions?q=&limit=` — opciones para un desplegable. Exige `read`. */
+    /** `GET /actions?q=&limit=` — opciones para un desplegable. Exige `select`. */
     options: (params: SelectOptionsParams = {}) =>
       unwrap(api<ApiEnvelope<SelectOptionsResult>>('/actions', { query: params })),
 

@@ -36,7 +36,7 @@ export function useActionCategoriesApi() {
      */
     list: () => listOrEmpty(fetchAllPages(query, { sortBy: 'sort_order', sortOrder: 'ASC' })),
 
-    /** `GET /action-categories?q=&limit=` — opciones para un desplegable. Exige `read`. */
+    /** `GET /action-categories?q=&limit=` — opciones para un desplegable. Exige `select`. */
     options: (params: SelectOptionsParams = {}) =>
       unwrap(api<ApiEnvelope<SelectOptionsResult>>('/action-categories', { query: params })),
 

@@ -8,48 +8,72 @@ import type { Action, ActionCategory, OverrideState, PermissionModule } from '~/
  * qué orden, con reservas razonables para códigos que aún no conocemos.
  */
 
-/** Orden canónico de las acciones (el mismo de `app/seeds.py::ACTIONS`). */
+/**
+ * Orden canónico de las acciones.
+ *
+ * No es el orden de declaración de `app/seeds.py::ACTIONS`: aquí cada acción
+ * masiva va justo detrás de su versión singular (`create`, `bulk_create`),
+ * porque es como se leen mejor en la matriz. El orden de alta en la base no
+ * tiene por qué ser el de lectura en la pantalla.
+ */
 const ACTION_ORDER = [
   'read',
   'list',
+  'select',
   'create',
+  'bulk_create',
   'update',
+  'bulk_update',
   'delete',
+  'bulk_delete',
   'export',
   'print',
-  'bulk_delete',
   'hard_delete',
-  'bulk_hard_delete'
+  'bulk_hard_delete',
+  'restore',
+  'bulk_restore'
 ] as const
 
 /** Etiqueta corta para la interfaz (el `name` del backend es más largo). */
 const ACTION_LABELS: Record<string, string> = {
   read: 'Leer',
   list: 'Listar',
+  select: 'Seleccionar',
   create: 'Crear',
+  bulk_create: 'Crear masivo',
   update: 'Actualizar',
+  bulk_update: 'Actualizar masivo',
   delete: 'Eliminar',
   export: 'Exportar',
   print: 'Imprimir',
   bulk_delete: 'Eliminar masivo',
   hard_delete: 'Eliminar permanente',
-  bulk_hard_delete: 'Eliminar masivo permanente'
+  bulk_hard_delete: 'Eliminar masivo permanente',
+  restore: 'Restaurar',
+  bulk_restore: 'Restaurar masivo'
 }
 
 /** Qué implica cada acción, para el tooltip de ayuda. */
 const ACTION_HINTS: Record<string, string> = {
-  // `read` y `list` se separan a propósito en el backend: se puede dejar que
-  // alguien rellene formularios sin darle acceso a explorar la tabla entera.
-  read: 'Ver la ficha de un registro y elegirlo en los desplegables de un formulario.',
+  // `read`, `list` y `select` se separan a propósito en el backend: se puede
+  // dejar que alguien rellene formularios sin darle acceso a explorar la tabla
+  // entera. `read` ya no cubre los desplegables —eso es cosa de `select`—,
+  // así que si esto se guarda sin la otra, un formulario se queda sin opciones.
+  read: 'Ver la ficha de un registro concreto.',
   list: 'Ver el listado del módulo y buscar dentro de él.',
+  select: 'Elegirlo en los desplegables de un formulario, sin ver el listado completo.',
   create: 'Dar de alta nuevos registros.',
+  bulk_create: 'Dar de alta varios registros de una sola vez, por lote.',
   update: 'Modificar registros existentes.',
+  bulk_update: 'Modificar varios registros de una sola vez, por lote.',
   delete: 'Enviar un registro a la papelera (se puede recuperar).',
   export: 'Descargar los datos del módulo.',
   print: 'Generar la versión imprimible de los datos.',
   bulk_delete: 'Enviar varios registros a la papelera de una sola vez.',
   hard_delete: 'Borrar un registro de la base de datos. No se puede deshacer.',
-  bulk_hard_delete: 'Borrar varios registros de la base de datos. No se puede deshacer.'
+  bulk_hard_delete: 'Borrar varios registros de la base de datos. No se puede deshacer.',
+  restore: 'Recuperar un registro que estaba en la papelera.',
+  bulk_restore: 'Recuperar varios registros de la papelera de una sola vez.'
 }
 
 /** Acciones cuyo efecto no se puede revertir: se marcan visualmente. */
@@ -92,6 +116,7 @@ const MODULE_ICONS: Record<string, string> = {
   users: 'i-lucide-users',
   roles: 'i-lucide-shield',
   permissions: 'i-lucide-key-round',
+  role_permissions: 'i-lucide-shield-check',
   user_permissions: 'i-lucide-user-round',
   reservations: 'i-lucide-calendar'
 }

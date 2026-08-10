@@ -3,8 +3,8 @@ import type {
   ApiEnvelope,
   CreateUserPermissionPayload,
   PaginatedResult,
-  UpdateUserPermissionPayload,
-  UserPermission
+  UserPermission,
+  UserPermissionBulkUpdateItem
 } from '~/types'
 
 /** Límite máximo de `limit` que acepta `AdvancedQuerySchema` en el backend. */
@@ -49,22 +49,28 @@ export function useUserPermissionsApi() {
       return rows
     },
 
-    /** `POST /user-permissions` — crea la excepción (o reactiva una borrada). */
-    create: (payload: CreateUserPermissionPayload) =>
-      unwrap(api<ApiEnvelope<UserPermission>>('/user-permissions', {
-        method: 'POST',
-        body: payload
-      })),
+    /**
+     * `POST /user-permissions/bulk/create` — crea varias excepciones nuevas de
+     * una sola vez. El backend valida el formato de todas antes de tocar la
+     * base, pero una que ya exista no cancela el lote: sale detallada en
+     * `errores` junto con lo que sí se guardó.
+     */
+    bulkCreate: (items: CreateUserPermissionPayload[]) =>
+      bulkWrite<CreateUserPermissionPayload>(api, '/user-permissions/bulk/create', 'POST', items),
 
-    /** `PUT /user-permissions/:id` — cambia una excepción de conceder a revocar (o al revés). */
-    update: (id: string, payload: UpdateUserPermissionPayload) =>
-      unwrap(api<ApiEnvelope<UserPermission>>(`/user-permissions/${id}`, {
-        method: 'PUT',
-        body: payload
-      })),
+    /**
+     * `PUT /user-permissions/bulk/update` — cambia varias excepciones existentes
+     * de conceder a revocar (o al revés) de una sola vez. Cada elemento lleva
+     * su `id`, que es el de la fila en `sa_user_permissions`, no el del usuario.
+     */
+    bulkUpdate: (items: UserPermissionBulkUpdateItem[]) =>
+      bulkWrite<UserPermissionBulkUpdateItem>(api, '/user-permissions/bulk/update', 'PUT', items),
 
-    /** `DELETE /user-permissions/:id` — quita la excepción (vuelve a heredar del rol). */
-    remove: (id: string) =>
-      unwrap(api<ApiEnvelope<UserPermission>>(`/user-permissions/${id}`, { method: 'DELETE' }))
+    /** `DELETE /user-permissions/bulk` — quita varias excepciones (vuelven a heredar del rol). */
+    bulkRemove: (ids: string[]) =>
+      unwrap(api<ApiEnvelope<UserPermission[]>>('/user-permissions/bulk', {
+        method: 'DELETE',
+        body: { ids }
+      }))
   }
 }

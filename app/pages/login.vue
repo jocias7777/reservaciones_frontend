@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AuthFormField, FormError, FormSubmitEvent } from '@nuxt/ui'
+import type { FetchError } from 'ofetch'
 
 definePageMeta({
   layout: 'auth'
@@ -18,6 +19,28 @@ const route = useRoute()
 const notify = useNotify()
 
 const loading = ref(false)
+
+/**
+ * Segundos que quedan del bloqueo por intentos fallidos (`app/services/login_throttle.py`).
+ *
+ * El backend responde 429 con `reintentar_en` cuando se abusa del login. Se
+ * cuenta hacia atrás en el propio navegador para no tener que golpear otra vez
+ * el mismo endpoint solo para saber si ya se puede reintentar.
+ */
+const retryAfter = ref(0)
+let retryTimer: ReturnType<typeof setInterval> | undefined
+
+function startRetryCountdown(seconds: number) {
+  clearInterval(retryTimer)
+  retryAfter.value = Math.max(0, Math.ceil(seconds))
+
+  retryTimer = setInterval(() => {
+    retryAfter.value -= 1
+    if (retryAfter.value <= 0) clearInterval(retryTimer)
+  }, 1000)
+}
+
+onScopeDispose(() => clearInterval(retryTimer))
 
 const fields: AuthFormField[] = [
   {
@@ -79,11 +102,20 @@ async function onSubmit(event: FormSubmitEvent<LoginState>) {
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/usuarios'
     await navigateTo(redirect)
   } catch (error) {
+    if (apiErrorStatus(error) === 429) {
+      const reintentarEn = (error as FetchError<{ reintentar_en?: number }>)?.data?.reintentar_en
+      if (typeof reintentarEn === 'number') startRetryCountdown(reintentarEn)
+    }
+
     notify.error(error, 'No se pudo iniciar sesión')
   } finally {
     loading.value = false
   }
 }
+
+const submitLabel = computed(() =>
+  retryAfter.value > 0 ? `Espera ${retryAfter.value}s…` : 'Iniciar sesión'
+)
 </script>
 
 <template>
@@ -95,7 +127,7 @@ async function onSubmit(event: FormSubmitEvent<LoginState>) {
       icon="i-lucide-user"
       title="Iniciar sesión"
       description="Accede con tu cuenta del sistema de reservaciones."
-      :submit="{ label: 'Iniciar sesión' }"
+      :submit="{ label: submitLabel, disabled: retryAfter > 0 }"
       @submit="onSubmit"
     >
       <template #footer>

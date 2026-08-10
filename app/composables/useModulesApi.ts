@@ -38,7 +38,7 @@ export function useModulesApi() {
     list: () => listOrEmpty(fetchAllPages(query, { sortBy: 'name', sortOrder: 'ASC' })),
 
     /**
-     * `GET /permissions?q=&limit=` — opciones para un desplegable. Exige `read`.
+     * `GET /permissions?q=&limit=` — opciones para un desplegable. Exige `select`.
      */
     options: (params: SelectOptionsParams = {}) =>
       unwrap(api<ApiEnvelope<SelectOptionsResult>>('/permissions', { query: params })),

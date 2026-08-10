@@ -92,13 +92,13 @@ const loadingRole = computed(() => Boolean(selectedRoleId.value) && loadingGrant
 
 /**
  * Guarda la diferencia entre lo que hay en pantalla y lo que había en el
- * servidor:
- *  - lo añadido se concede con un POST por combinación (el backend reactiva la
- *    fila si ya existía borrada);
- *  - lo quitado se revoca en una sola llamada al borrado masivo.
+ * servidor: lo quitado se revoca con un borrado masivo y lo añadido se
+ * concede con una sola llamada a `bulk/create`, que reemplaza lo que antes
+ * era un `POST` por combinación.
  *
- * PENDIENTE DE BACKEND: con un endpoint tipo `PUT /roles/:id/permissions` que
- * recibiera la matriz completa, esto sería una única petición atómica.
+ * `bulk/create` no es atómico —cada fila se confirma por su cuenta—, así que
+ * un duplicado suelto no cancela el lote: viene detallado en `errores` junto
+ * con lo que sí se guardó.
  */
 async function save() {
   if (!selectedRole.value || !matrix.isDirty.value) return
@@ -118,21 +118,23 @@ async function save() {
       await rolePermissionsApi.bulkRemove(removedIds)
     }
 
-    const results = await Promise.allSettled(
-      added.map((key) => {
-        const { moduleId, actionId } = parsePermissionKey(key)
-        return rolePermissionsApi.create({
-          role_id: roleId,
-          permission_id: moduleId,
-          action_id: actionId
+    let failedCount = 0
+    let firstError = ''
+
+    if (added.length) {
+      const result = await rolePermissionsApi.bulkCreate(
+        added.map((key) => {
+          const { moduleId, actionId } = parsePermissionKey(key)
+          return { role_id: roleId, permission_id: moduleId, action_id: actionId }
         })
-      })
-    )
+      )
 
-    const failed = results.filter(result => result.status === 'rejected')
+      failedCount = result.fallidos
+      firstError = result.errores[0]?.error ?? ''
+    }
 
-    if (failed.length) {
-      notify.warning('Se guardó parcialmente', `${failed.length} de ${added.length} permisos no se pudieron conceder: ${apiErrorMessage((failed[0] as PromiseRejectedResult).reason)}`)
+    if (failedCount) {
+      notify.warning('Se guardó parcialmente', `${failedCount} de ${added.length} permisos no se pudieron conceder: ${firstError}`)
     } else {
       notify.success('Permisos actualizados', `«${selectedRole.value.name}» quedó con ${matrix.activeCount.value} permiso(s) activo(s).`)
     }

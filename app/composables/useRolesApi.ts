@@ -23,8 +23,9 @@ export function useRolesApi() {
     /**
      * `GET /roles?q=&limit=` — opciones para el selector de rol de un usuario.
      *
-     * Exige `read`, no `list`: poder asignarle un rol a alguien desde un
-     * formulario no debería obligar a darle acceso a explorar la tabla de roles.
+     * Exige `select`, ni `read` ni `list`: poder asignarle un rol a alguien
+     * desde un formulario no debería obligar a darle acceso a explorar la
+     * tabla de roles ni a ver la ficha de ninguno en particular.
      */
     options: (params: SelectOptionsParams = {}) =>
       unwrap(api<ApiEnvelope<SelectOptionsResult>>('/roles', { query: params })),

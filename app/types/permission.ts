@@ -171,3 +171,6 @@ export type OverrideState = 'inherit' | 'grant' | 'deny'
 export interface UpdateUserPermissionPayload {
   is_grant: boolean
 }
+
+/** Un elemento de `PUT /user-permissions/bulk/update`: la excepción a cambiar, por su id. */
+export type UserPermissionBulkUpdateItem = UpdateUserPermissionPayload & { id: string }

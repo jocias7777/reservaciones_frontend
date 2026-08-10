@@ -36,8 +36,9 @@ export interface SelectOption {
  * Resultado de `GET /<recurso>?q=&limit=` (`BaseRepository.select_options`).
  *
  * Es lo que alimenta los desplegables de los formularios, y va por la acción
- * `read` en vez de `list` justo para eso: alguien puede necesitar elegir un rol
- * en un formulario sin tener acceso a explorar la tabla de roles.
+ * `select` —ni `read` ni `list`— justo para eso: alguien puede necesitar
+ * elegir un rol en un formulario sin tener acceso a explorar la tabla de
+ * roles ni a ver la ficha de ninguno en particular.
  *
  * `total` es cuántas coinciden de verdad, no cuántas vinieron: el backend acota
  * a 50 por defecto (200 como máximo) y avisa con `truncado`, para poder decir
@@ -54,6 +55,34 @@ export interface SelectOptionsResult {
 export interface SelectOptionsParams {
   q?: string
   limit?: number
+}
+
+/**
+ * Un elemento del lote que no se pudo escribir, tal como lo reporta
+ * `BulkWriteMixin`.
+ *
+ * `id` solo aparece en `bulk/update`: en `bulk/create` el elemento no tenía
+ * identificador propio todavía, así que lo único que lo señala es su posición.
+ */
+export interface BulkWriteError {
+  indice: number
+  id?: string
+  error: string
+}
+
+/**
+ * Resultado de `POST .../bulk/create` o `PUT .../bulk/update`.
+ *
+ * No es atómico: cada fila se confirma por su cuenta, así que un duplicado en
+ * el elemento 40 no deshace los 39 anteriores. Por eso el resultado siempre
+ * trae el desglose en vez de un simple "salió bien" — hasta cuando fallan
+ * todos (código 400 en vez de 201/200/207) el cuerpo sigue teniendo esta
+ * forma, con `correctos` en cero.
+ */
+export interface BulkWriteResult {
+  correctos: number
+  fallidos: number
+  errores: BulkWriteError[]
 }
 
 export type SortOrder = 'ASC' | 'DESC'
