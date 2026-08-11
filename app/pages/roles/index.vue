@@ -14,6 +14,12 @@ const access = useAccessControl()
 /** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
 const canRestore = computed(() => access.canRestoreAny('roles'))
 
+/** Agregar, editar y eliminar (uno o en lote) son permisos aparte: cada botón se ofrece por su cuenta. */
+const canCreate = computed(() => access.can('roles', 'create'))
+const canUpdate = computed(() => access.can('roles', 'update'))
+const canDelete = computed(() => access.can('roles', 'delete'))
+const canBulkDelete = computed(() => access.can('roles', 'bulk_delete'))
+
 /** Botones de acción de cada fila: iconos algo menores que los del resto. */
 const rowAction = {
   color: 'neutral',
@@ -71,7 +77,10 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
       description="Cada rol define qué puede hacer un usuario."
     >
       <template #actions>
-        <UButton v-bind="addRole" />
+        <UButton
+          v-if="canCreate"
+          v-bind="addRole"
+        />
       </template>
     </BasePageHeader>
 
@@ -97,7 +106,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
         />
 
         <BaseConfirmPopover
-          v-if="selectedIds.length"
+          v-if="selectedIds.length && canBulkDelete"
           title="¿Eliminar los roles seleccionados?"
           :description="`Se enviarán ${selectedIds.length} rol(es) a la papelera. Los usuarios que los tuvieran asignados se quedan sin rol.`"
           :loading="removing"
@@ -169,7 +178,10 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
 
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
-          <UTooltip text="Editar datos del rol">
+          <UTooltip
+            v-if="canUpdate"
+            text="Editar datos del rol"
+          >
             <UButton
               :to="`/roles/${row.original.id}`"
               icon="i-lucide-square-pen"
@@ -179,6 +191,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
           </UTooltip>
 
           <BaseConfirmPopover
+            v-if="canDelete"
             title="¿Eliminar este rol?"
             :description="`«${row.original.name}» dejará de estar disponible y sus usuarios se quedarán sin rol.`"
             :loading="removing"
@@ -201,7 +214,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
           :description="isFiltered
             ? 'Prueba con otro nombre o descripción.'
             : 'Crea un rol y asígnale permisos por módulo.'"
-          :actions="isFiltered ? [] : [addRole]"
+          :actions="isFiltered || !canCreate ? [] : [addRole]"
           variant="naked"
         />
       </template>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { AccessState } from './access'
 import {
   GUARDED_MODULES,
+  MANAGED_MODULES,
   RESTORABLE_MODULES,
   accessForRoute,
   resolveCan,
@@ -98,9 +99,22 @@ describe('resolveCanVisit', () => {
     expect(resolveCanVisit(s, '/roles/acciones/papelera')).toBe(false)
   })
 
-  it('una ruta hermana de la papelera (crear/editar) sigue pidiendo "list", sin verse afectada', () => {
-    const s = state({ granted: { 'actions::list': true, 'actions::restore': false, 'actions::bulk_restore': false } })
-    expect(resolveCanVisit(s, '/roles/acciones/nueva')).toBe(true)
+  it('el formulario de alta exige "create", no "list": tener acceso al listado no basta para entrar a darlo de alta', () => {
+    const soloLista = state({ granted: { 'actions::list': true, 'actions::create': false } })
+    expect(resolveCanVisit(soloLista, '/roles/acciones/nueva')).toBe(false)
+
+    const conCrear = state({ granted: { 'actions::list': true, 'actions::create': true } })
+    expect(resolveCanVisit(conCrear, '/roles/acciones/nueva')).toBe(true)
+  })
+
+  it('una edición por id sigue cayendo en el listado del módulo (no hay ruta propia por id)', () => {
+    const s = state({ granted: { 'roles::list': true, 'roles::update': false } })
+    // No hay forma de distinguir un id real de otro segmento por prefijo, así
+    // que la ficha de edición todavía depende de "list": el botón de "Editar"
+    // dentro del listado es quien de verdad exige "update" (ver los tests de
+    // las páginas). Aquí solo se confirma que no quedó atrapada por error en
+    // alguna de las rutas literales nuevas ("nuevo", "papelera").
+    expect(resolveCanVisit(s, '/roles/9c6c9e2e-1234-4abc-8def-000000000001')).toBe(true)
   })
 })
 
@@ -123,6 +137,56 @@ describe('accessForRoute — especificidad de prefijos', () => {
   it('las rutas normales de esos mismos módulos siguen pidiendo "list"', () => {
     expect(accessForRoute('/usuarios')).toEqual({ prefix: '/usuarios', module: 'users', action: 'list' })
     expect(accessForRoute('/roles')).toEqual({ prefix: '/roles', module: 'roles', action: 'list' })
+  })
+
+  it('el formulario de alta de cada módulo resuelve contra ese módulo con "create", no con el listado', () => {
+    const cases: Array<[string, string]> = [
+      ['/usuarios/nuevo', 'users'],
+      ['/roles/nuevo', 'roles'],
+      ['/roles/acciones/nueva', 'actions'],
+      ['/roles/categorias/nueva', 'action_categories']
+    ]
+
+    for (const [path, module] of cases) {
+      expect(accessForRoute(path)).toEqual({ prefix: path, module, action: 'create' })
+    }
+  })
+})
+
+describe('módulos con listado y formulario completos', () => {
+  it('MANAGED_MODULES son justo los 4 listados con Agregar/Editar/Eliminar', () => {
+    expect([...MANAGED_MODULES].sort()).toEqual(['action_categories', 'actions', 'roles', 'users'])
+  })
+})
+
+describe('resolveCan — caso reportado, aplicado a crear/editar/eliminar', () => {
+  it('con "list" pero sin "delete" en el módulo, el botón de eliminar de esa pantalla no debe ofrecerse', () => {
+    const s = state({ granted: { 'roles::list': true, 'roles::delete': false } })
+    expect(resolveCan(s, 'roles', 'delete')).toBe(false)
+  })
+
+  it('"delete" (uno) y "bulk_delete" (en lote) son permisos aparte: se puede tener uno sin el otro', () => {
+    const s = state({ granted: { 'roles::delete': true, 'roles::bulk_delete': false } })
+    expect(resolveCan(s, 'roles', 'delete')).toBe(true)
+    expect(resolveCan(s, 'roles', 'bulk_delete')).toBe(false)
+  })
+
+  it('"create" y "update" también se decretan aparte, módulo por módulo', () => {
+    const s = state({
+      granted: {
+        'roles::list': true,
+        'roles::create': false,
+        'roles::update': true,
+        'users::list': true,
+        'users::create': true,
+        'users::update': false
+      }
+    })
+
+    expect(resolveCan(s, 'roles', 'create')).toBe(false)
+    expect(resolveCan(s, 'roles', 'update')).toBe(true)
+    expect(resolveCan(s, 'users', 'create')).toBe(true)
+    expect(resolveCan(s, 'users', 'update')).toBe(false)
   })
 })
 

@@ -15,14 +15,14 @@ import type { ApiClient } from '~/plugins/api'
  *    403. Sale más caro —una petición por módulo— y solo averigua quién puede
  *    listar, que es lo que hace falta para decidir si se entra a una pantalla.
  *
- *    `restore` y `bulk_restore` se prueban también, aparte, para los módulos
- *    con papelera: no hay un `GET` barato para eso, así que se manda el `POST`
- *    real contra un id que no puede existir (ver `probeRestore` y
- *    `probeBulkRestore`). Ninguno de los desenlaces posibles —403 sin permiso,
- *    404 "no encontrado" con permiso— toca una fila de la base, así que sigue
- *    siendo una prueba y no una restauración de verdad. Son dos permisos
- *    aparte en el backend (uno por fila, otro por lote), así que se prueban
- *    los dos: la papelera es útil con cualquiera de los dos.
+ *    `restore`/`bulk_restore` y `create`/`update`/`delete`/`bulk_delete` se
+ *    prueban también, aparte: no hay un `GET` barato para ninguno de esos, así
+ *    que se manda la petición real de escritura contra un id que no puede
+ *    existir (o un cuerpo vacío, para `create`). Ninguno de los desenlaces
+ *    posibles —403 sin permiso, 404/400 "no encontrado"/"datos incompletos"
+ *    con permiso— toca una fila de la base: se comprobó, con las cuatro
+ *    validaciones de alta del backend (usuario, rol, acción, categoría) antes
+ *    de escribir nada, que un cuerpo vacío nunca pasa a crear un registro real.
  *
  * Las dos vías miden lo mismo: el resultado de `require_permission`, con lo que
  * da el rol, las excepciones de ese usuario y el bypass del superadmin ya
@@ -43,14 +43,15 @@ import type { ApiClient } from '~/plugins/api'
 const PERMISSIONS_ENDPOINT = '/auth/me/permissions'
 
 /**
- * Id con el que se prueba `restore`/`bulk_restore` sin restaurar nada.
+ * Id con el que se prueban `restore`, `update` y `delete` (uno a uno o en
+ * lote) sin tocar ninguna fila de verdad.
  *
- * No existe fila con este id —ningún generador de ids reales va a producirlo—,
- * así que tanto `POST .../<id>/restore` como `POST .../bulk/restore` con este
- * id en la lista siempre llegan vacíos al repositorio. Lo único que decide la
+ * No existe fila con este id —ningún generador de ids reales va a
+ * producirlo—, así que cualquier petición contra él —sola o dentro de un
+ * `{ ids: [...] }`— siempre llega vacía al repositorio. Lo único que decide la
  * respuesta es el permiso.
  */
-const PROBE_RESTORE_ID = '00000000-0000-0000-0000-000000000000'
+const PROBE_ID = '00000000-0000-0000-0000-000000000000'
 
 export function useAccessControl() {
   const api = useApi()
@@ -148,79 +149,140 @@ export function useAccessControl() {
   }
 
   /**
-   * ¿Contesta este módulo a una consulta de listado?
+   * Corre la petición real de prueba y la traduce a "puede" / "no puede".
    *
    * Solo un 403 cuenta como "no puede". Si falla por cualquier otra razón —el
-   * backend caído, la red— se concede: dejar a alguien fuera de su propia
-   * aplicación por un fallo pasajero es peor que dejarle entrar a una pantalla
-   * que, si de verdad no le corresponde, el backend le va a negar igual.
+   * backend caído, la red, un 404/400 porque el id de prueba no es de nadie o
+   * el cuerpo vacío no pasa la validación— se concede: dejar a alguien fuera
+   * de su propia aplicación por un fallo pasajero es peor que dejarle entrar a
+   * algo que, si de verdad no le corresponde, el backend le va a negar igual.
+   *
+   * Todas las pruebas de abajo comparten esta forma; solo cambia qué endpoint
+   * y qué método golpean.
    */
-  async function probe(module: string): Promise<boolean> {
-    const endpoint = MODULE_ENDPOINTS[module]
-    if (!endpoint) return true
-
+  async function probeWrite(run: () => Promise<unknown>): Promise<boolean> {
     try {
-      await queryOne(endpoint)
+      await run()
       return true
     } catch (error) {
       return apiErrorStatus(error) !== 403
     }
   }
+
+  /** `probeWrite`, pero resuelto solo si el módulo tiene endpoint conocido. */
+  function probeModuleAction(module: string, run: (endpoint: string) => Promise<unknown>): Promise<boolean> {
+    const endpoint = MODULE_ENDPOINTS[module]
+    return endpoint ? probeWrite(() => run(endpoint)) : Promise.resolve(true)
+  }
+
+  /** ¿Contesta este módulo a una consulta de listado? */
+  const probe = (module: string) => probeModuleAction(module, endpoint => queryOne(endpoint))
 
   /**
-   * ¿Puede restaurar en este módulo?
+   * ¿Puede restaurar una fila de este módulo?
    *
-   * Igual que `probe`, pero contra `POST .../<id>/restore` con
-   * `PROBE_RESTORE_ID` en vez de `QUERY`: es el único verbo que existe para
-   * `restore`, no hay un `GET` equivalente que probar. Sin permiso, el
-   * decorador del backend corta con 403 antes de llegar al repositorio; con
-   * permiso, llega y responde 404 porque el id no es de nadie. Ninguno de los
-   * dos casos escribe nada.
+   * No hay un `GET` barato para `restore`, así que se manda el `POST` real
+   * contra `PROBE_ID`. Sin permiso, el decorador del backend corta con
+   * 403 antes de llegar al repositorio; con permiso, llega y responde 404
+   * porque el id no es de nadie. Ninguno de los dos casos escribe nada.
    */
-  async function probeRestore(module: string): Promise<boolean> {
-    const endpoint = MODULE_ENDPOINTS[module]
-    if (!endpoint) return true
-
-    try {
-      await request(`${endpoint}/${PROBE_RESTORE_ID}/restore`, { method: 'POST' })
-      return true
-    } catch (error) {
-      return apiErrorStatus(error) !== 403
-    }
-  }
+  const probeRestore = (module: string) => probeModuleAction(
+    module,
+    endpoint => request(`${endpoint}/${PROBE_ID}/restore`, { method: 'POST' })
+  )
 
   /**
    * ¿Puede restaurar en lote en este módulo?
    *
    * Es un permiso aparte de `restore` en el backend (`require_permission(modulo,
-   * 'bulk_restore')`), así que se prueba aparte: alguien puede tener uno sin el
-   * otro. Mismo truco que `probeRestore`, contra `POST .../bulk/restore` con
-   * `PROBE_RESTORE_ID` como único id de la lista.
+   * 'bulk_restore')`): alguien puede tener uno sin el otro. Mismo truco que
+   * `probeRestore`, contra `POST .../bulk/restore` con `PROBE_ID` como
+   * único id de la lista.
    */
-  async function probeBulkRestore(module: string): Promise<boolean> {
-    const endpoint = MODULE_ENDPOINTS[module]
-    if (!endpoint) return true
+  const probeBulkRestore = (module: string) => probeModuleAction(
+    module,
+    endpoint => request(`${endpoint}/bulk/restore`, { method: 'POST', body: { ids: [PROBE_ID] } })
+  )
 
-    try {
-      await request(`${endpoint}/bulk/restore`, { method: 'POST', body: { ids: [PROBE_RESTORE_ID] } })
-      return true
-    } catch (error) {
-      return apiErrorStatus(error) !== 403
-    }
+  /**
+   * ¿Puede dar de alta en este módulo?
+   *
+   * El `POST` de creación con el cuerpo vacío `{}`: si el permiso falta, el
+   * decorador corta con 403 antes de leerlo; si está, la validación de alta
+   * de los cuatro módulos con formulario (usuario, rol, acción, categoría)
+   * rechaza el cuerpo vacío con 400 ANTES de que el servicio toque la base
+   * —todas exigen al menos un campo—, así que nunca se llega a crear nada.
+   */
+  const probeCreate = (module: string) => probeModuleAction(
+    module,
+    endpoint => request(endpoint, { method: 'POST', body: {} })
+  )
+
+  /**
+   * ¿Puede editar una fila de este módulo?
+   *
+   * `PUT .../<id>` con `PROBE_ID` y cuerpo vacío. Mismo doble cierre
+   * que `create`: sin permiso, 403 antes de leer el cuerpo; con permiso, la
+   * validación de actualización rechaza el cuerpo vacío con 400 antes de
+   * buscar la fila, así que ni siquiera llega a comprobar que el id no existe.
+   */
+  const probeUpdate = (module: string) => probeModuleAction(
+    module,
+    endpoint => request(`${endpoint}/${PROBE_ID}`, { method: 'PUT', body: {} })
+  )
+
+  /**
+   * ¿Puede eliminar una fila de este módulo?
+   *
+   * `DELETE .../<id>` con `PROBE_ID`. Sin permiso, 403; con permiso,
+   * el servicio busca la fila, no la encuentra y responde 404 sin borrar nada.
+   */
+  const probeDelete = (module: string) => probeModuleAction(
+    module,
+    endpoint => request(`${endpoint}/${PROBE_ID}`, { method: 'DELETE' })
+  )
+
+  /**
+   * ¿Puede eliminar en lote en este módulo?
+   *
+   * `DELETE .../bulk` con `PROBE_ID` como único id. Sin permiso, 403;
+   * con permiso, no hay ninguna fila activa con ese id y no se borra nada.
+   */
+  const probeBulkDelete = (module: string) => probeModuleAction(
+    module,
+    endpoint => request(`${endpoint}/bulk`, { method: 'DELETE', body: { ids: [PROBE_ID] } })
+  )
+
+  /**
+   * Junta en un solo mapa el resultado de probar una acción en una lista de
+   * módulos. Lo usa `probeAll` una vez por acción, en vez de repetir el mismo
+   * `Promise.all` + `accessKey` para cada una.
+   */
+  async function probeAction(
+    modules: readonly string[],
+    action: string,
+    run: (module: string) => Promise<boolean>
+  ): Promise<Array<readonly [string, boolean]>> {
+    return Promise.all(modules.map(async module => [accessKey(module, action), await run(module)] as const))
   }
 
   /**
-   * Vía 2: se deduce módulo por módulo (y, en los que tienen papelera, también
-   * `restore` y `bulk_restore`).
+   * Vía 2: se deduce módulo por módulo. `list` en todos los módulos guardados;
+   * `restore`/`bulk_restore` y `create`/`update`/`delete`/`bulk_delete` solo en
+   * los que tienen papelera y formulario de alta, respectivamente.
    */
   async function probeAll(): Promise<Record<string, boolean>> {
-    const [listResults, restoreResults, bulkRestoreResults] = await Promise.all([
-      Promise.all(GUARDED_MODULES.map(async module => [accessKey(module, 'list'), await probe(module)] as const)),
-      Promise.all(RESTORABLE_MODULES.map(async module => [accessKey(module, 'restore'), await probeRestore(module)] as const)),
-      Promise.all(RESTORABLE_MODULES.map(async module => [accessKey(module, 'bulk_restore'), await probeBulkRestore(module)] as const))
+    const results = await Promise.all([
+      probeAction(GUARDED_MODULES, 'list', probe),
+      probeAction(RESTORABLE_MODULES, 'restore', probeRestore),
+      probeAction(RESTORABLE_MODULES, 'bulk_restore', probeBulkRestore),
+      probeAction(MANAGED_MODULES, 'create', probeCreate),
+      probeAction(MANAGED_MODULES, 'update', probeUpdate),
+      probeAction(MANAGED_MODULES, 'delete', probeDelete),
+      probeAction(MANAGED_MODULES, 'bulk_delete', probeBulkDelete)
     ])
 
-    return Object.fromEntries([...listResults, ...restoreResults, ...bulkRestoreResults])
+    return Object.fromEntries(results.flat())
   }
 
   async function resolve() {

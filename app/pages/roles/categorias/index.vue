@@ -23,6 +23,12 @@ const access = useAccessControl()
 /** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
 const canRestore = computed(() => access.canRestoreAny('action_categories'))
 
+/** Agregar, editar y eliminar (uno o en lote) son permisos aparte: cada botón se ofrece por su cuenta. */
+const canCreate = computed(() => access.can('action_categories', 'create'))
+const canUpdate = computed(() => access.can('action_categories', 'update'))
+const canDelete = computed(() => access.can('action_categories', 'delete'))
+const canBulkDelete = computed(() => access.can('action_categories', 'bulk_delete'))
+
 /** Botones de acción de cada fila: iconos algo menores que los del resto. */
 const rowAction = {
   color: 'neutral',
@@ -82,7 +88,10 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
       description="Los bloques en los que se agrupan las acciones dentro de cada módulo, en el orden en que se muestran."
     >
       <template #actions>
-        <UButton v-bind="addCategory" />
+        <UButton
+          v-if="canCreate"
+          v-bind="addCategory"
+        />
       </template>
     </BasePageHeader>
 
@@ -108,7 +117,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
         />
 
         <BaseConfirmPopover
-          v-if="selectedIds.length"
+          v-if="selectedIds.length && canBulkDelete"
           title="¿Eliminar las categorías seleccionadas?"
           :description="`Se enviarán ${selectedIds.length} categoría(s) a la papelera. Sus acciones no se borran: pasan al bloque «Otras acciones».`"
           :loading="removing"
@@ -201,7 +210,10 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
 
       <template #row-actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
-          <UTooltip text="Editar categoría">
+          <UTooltip
+            v-if="canUpdate"
+            text="Editar categoría"
+          >
             <UButton
               :to="`/roles/categorias/${row.original.id}`"
               icon="i-lucide-square-pen"
@@ -211,6 +223,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
           </UTooltip>
 
           <BaseConfirmPopover
+            v-if="canDelete"
             title="¿Eliminar esta categoría?"
             :description="`Las acciones de «${row.original.name}» no se borran: pasan al bloque «Otras acciones» hasta que se les asigne otra.`"
             :loading="removing"
@@ -233,7 +246,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
           :description="isFiltered
             ? 'Prueba con otro nombre o descripción.'
             : 'Crea la primera categoría para poder agrupar las acciones por lo que hacen.'"
-          :actions="isFiltered ? [] : [addCategory]"
+          :actions="isFiltered || !canCreate ? [] : [addCategory]"
           variant="naked"
         />
       </template>

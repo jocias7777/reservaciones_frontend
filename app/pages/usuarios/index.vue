@@ -14,6 +14,12 @@ const access = useAccessControl()
 /** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
 const canRestore = computed(() => access.canRestoreAny('users'))
 
+/** Agregar, editar y eliminar (uno o en lote) son permisos aparte: cada botón se ofrece por su cuenta. */
+const canCreate = computed(() => access.can('users', 'create'))
+const canUpdate = computed(() => access.can('users', 'update'))
+const canDelete = computed(() => access.can('users', 'delete'))
+const canBulkDelete = computed(() => access.can('users', 'bulk_delete'))
+
 /** Botones de acción de cada fila: iconos algo menores que los del resto. */
 const rowAction = {
   color: 'neutral',
@@ -82,7 +88,10 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
       description="Cuentas con acceso al sistema."
     >
       <template #actions>
-        <UButton v-bind="addUser" />
+        <UButton
+          v-if="canCreate"
+          v-bind="addUser"
+        />
       </template>
     </BasePageHeader>
 
@@ -120,7 +129,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
         />
 
         <BaseConfirmPopover
-          v-if="selectedIds.length"
+          v-if="selectedIds.length && canBulkDelete"
           title="¿Eliminar las cuentas seleccionadas?"
           :description="`Se enviarán ${selectedIds.length} usuario(s) a la papelera.`"
           :loading="removing"
@@ -206,7 +215,10 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
 
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
-          <UTooltip text="Editar">
+          <UTooltip
+            v-if="canUpdate"
+            text="Editar"
+          >
             <UButton
               :to="`/usuarios/${row.original.id}`"
               icon="i-lucide-square-pen"
@@ -216,6 +228,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
           </UTooltip>
 
           <BaseConfirmPopover
+            v-if="canDelete"
             title="¿Eliminar esta cuenta?"
             :description="`${row.original.email} dejará de poder iniciar sesión.`"
             :loading="removing"
@@ -238,7 +251,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
           :description="isFiltered
             ? 'Prueba con otro correo o nombre de usuario.'
             : 'Crea la primera cuenta para empezar a dar acceso al sistema.'"
-          :actions="isFiltered ? [] : [addUser]"
+          :actions="isFiltered || !canCreate ? [] : [addUser]"
           variant="naked"
         />
       </template>

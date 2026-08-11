@@ -32,16 +32,21 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { prefix: '/usuarios/permisos', module: 'user_permissions', action: 'list' },
   { prefix: '/roles/permisos', module: 'role_permissions', action: 'list' },
   { prefix: '/roles/modulos', module: 'permissions', action: 'list' },
-  // Las papeleras piden `restore` o `bulk_restore`, no `list`: van antes que el
-  // listado del que cuelgan porque, si no, "gana el primero que encaje" las
-  // mandaría al permiso del listado.
+  // Las papeleras piden `restore` o `bulk_restore`, no `list`; los formularios
+  // de alta piden `create`. Ambas van antes que el listado del que cuelgan
+  // porque, si no, "gana el primero que encaje" las mandaría al permiso del
+  // listado.
   { prefix: '/roles/acciones/papelera', module: 'actions', action: ['restore', 'bulk_restore'] },
+  { prefix: '/roles/acciones/nueva', module: 'actions', action: 'create' },
   { prefix: '/roles/acciones', module: 'actions', action: 'list' },
   { prefix: '/roles/categorias/papelera', module: 'action_categories', action: ['restore', 'bulk_restore'] },
+  { prefix: '/roles/categorias/nueva', module: 'action_categories', action: 'create' },
   { prefix: '/roles/categorias', module: 'action_categories', action: 'list' },
   { prefix: '/usuarios/papelera', module: 'users', action: ['restore', 'bulk_restore'] },
+  { prefix: '/usuarios/nuevo', module: 'users', action: 'create' },
   { prefix: '/usuarios', module: 'users', action: 'list' },
   { prefix: '/roles/papelera', module: 'roles', action: ['restore', 'bulk_restore'] },
+  { prefix: '/roles/nuevo', module: 'roles', action: 'create' },
   { prefix: '/roles', module: 'roles', action: 'list' }
 ]
 
@@ -83,6 +88,18 @@ export const GUARDED_MODULES = [...new Set(ROUTE_ACCESS.map(entry => entry.modul
 export const RESTORABLE_MODULES = [...new Set(
   ROUTE_ACCESS.filter(entry => Array.isArray(entry.action)).map(entry => entry.module)
 )]
+
+/**
+ * Módulos con un listado y un formulario completos en la interfaz: los únicos
+ * donde hace falta saber si se puede `create`/`update`/`delete`/`bulk_delete`,
+ * además de `list`.
+ *
+ * A diferencia de `RESTORABLE_MODULES`, esta no sale de `ROUTE_ACCESS`: crear,
+ * editar y eliminar son botones dentro de la propia pantalla del listado, no
+ * rutas aparte, así que no hay de dónde derivarlos solos. Si se agrega un
+ * quinto listado con estos botones, hay que acordarse de sumarlo aquí.
+ */
+export const MANAGED_MODULES = ['users', 'roles', 'actions', 'action_categories']
 
 /**
  * Endpoint de cada módulo. El `code` del módulo y su ruta no siempre coinciden:

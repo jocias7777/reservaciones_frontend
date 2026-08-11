@@ -22,6 +22,12 @@ const access = useAccessControl()
 /** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
 const canRestore = computed(() => access.canRestoreAny('actions'))
 
+/** Agregar, editar y eliminar (uno o en lote) son permisos aparte: cada botón se ofrece por su cuenta. */
+const canCreate = computed(() => access.can('actions', 'create'))
+const canUpdate = computed(() => access.can('actions', 'update'))
+const canDelete = computed(() => access.can('actions', 'delete'))
+const canBulkDelete = computed(() => access.can('actions', 'bulk_delete'))
+
 /**
  * En qué módulos comprueba el backend cada acción.
  *
@@ -104,7 +110,10 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
       description="Lo que se puede permitir o negar sobre cada módulo del sistema."
     >
       <template #actions>
-        <UButton v-bind="addAction" />
+        <UButton
+          v-if="canCreate"
+          v-bind="addAction"
+        />
       </template>
     </BasePageHeader>
 
@@ -130,7 +139,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
         />
 
         <BaseConfirmPopover
-          v-if="selectedIds.length"
+          v-if="selectedIds.length && canBulkDelete"
           title="¿Eliminar las acciones seleccionadas?"
           :description="`Se enviarán ${selectedIds.length} acción(es) a la papelera. Si alguna está concedida en permisos, no se eliminará ninguna.`"
           :loading="removing"
@@ -240,7 +249,10 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
 
       <template #row-actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
-          <UTooltip text="Editar acción">
+          <UTooltip
+            v-if="canUpdate"
+            text="Editar acción"
+          >
             <UButton
               :to="`/roles/acciones/${row.original.id}`"
               icon="i-lucide-square-pen"
@@ -250,6 +262,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
           </UTooltip>
 
           <BaseConfirmPopover
+            v-if="canDelete"
             title="¿Eliminar esta acción?"
             :description="`«${row.original.name}» dejará de aparecer en la matriz de permisos. Si está concedida en algún permiso, primero hay que quitarla de ahí.`"
             :loading="removing"
@@ -272,7 +285,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
           :description="isFiltered
             ? 'Prueba con otro código o nombre.'
             : 'Crea la primera acción para poder concederla en los permisos de cada rol.'"
-          :actions="isFiltered ? [] : [addAction]"
+          :actions="isFiltered || !canCreate ? [] : [addAction]"
           variant="naked"
         />
       </template>
