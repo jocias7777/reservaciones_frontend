@@ -65,8 +65,14 @@ onMounted(() => {
   -->
   <div class="mx-auto max-w-(--ui-container) px-4 pt-6 pb-8 sm:px-6 lg:px-8">
     <div class="lg:grid lg:grid-cols-10 lg:gap-10">
-      <!-- Alto fijo (pantalla menos header) para que siempre tenga sitio de sobra donde quedarse fija. -->
-      <aside class="hidden lg:sticky lg:top-16 lg:col-span-2 lg:block lg:h-[calc(100vh-4rem)] lg:overflow-y-auto">
+      <!--
+        Sin alto fijo ni scroll propio: con solo 13 entradas cabe de sobra en
+        cualquier pantalla, y ese scroll interno era justo el problema — con
+        el mouse encima de la barra, la rueda scrolleaba SU propio contenido
+        en vez de dejar pasar el scroll de la página, y por eso "Guía" se
+        perdía de vista aunque el resto no se hubiera movido de verdad.
+      -->
+      <aside class="hidden lg:sticky lg:top-16 lg:col-span-2 lg:block">
         <UNavigationMenu
           :items="items"
           orientation="vertical"
