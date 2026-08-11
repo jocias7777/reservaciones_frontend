@@ -41,18 +41,27 @@ const items = computed<NavigationMenuItem[]>(() =>
   })
 )
 
+const contentRef = ref<HTMLElement | null>(null)
+
 /**
  * Cada página de «Cómo funciona» es una ruta y un componente distintos, así
  * que este armazón se vuelve a montar en cada una: si se llega con scroll
  * (por ejemplo desde el icono del header estando abajo de otra pantalla), sin
  * esto la página se ve "pegada" porque el scroll no se resetea solo.
  *
+ * En pantallas grandes el que hace scroll ya no es la ventana sino el panel
+ * de contenido (ver el `<div>` de abajo), así que hay que resetear los dos:
+ * la ventana para el layout de celular y el panel para el de escritorio.
+ *
  * El reseteo se hace después de `nextTick` y del siguiente frame porque el
  * propio router puede tocar el scroll justo después de montar: si se hace
  * antes, esa segunda pisada deja la página donde estaba.
  */
 onMounted(() => {
-  nextTick(() => requestAnimationFrame(() => window.scrollTo({ top: 0 })))
+  nextTick(() => requestAnimationFrame(() => {
+    window.scrollTo({ top: 0 })
+    if (contentRef.value) contentRef.value.scrollTop = 0
+  }))
 })
 </script>
 
@@ -61,18 +70,26 @@ onMounted(() => {
     Grid propio, sin pasar por `UPage`/`UPageAside`/`UPageBody`: son varias
     capas de componentes reenviándose clases entre sí y, aun con las clases
     correctas puestas, la barra seguía sin quedarse fija. Escrito a mano acá
-    no queda ninguna duda de qué elemento tiene `sticky` y cuál se mueve.
+    no queda ninguna duda de qué elemento tiene scroll y cuál no.
+
+    En `lg` y superior no es la ventana la que hace scroll: el contenedor
+    ocupa exactamente el alto que sobra bajo el header (`100vh` menos su
+    altura) y no deja que nada se desborde de él. Adentro, la barra
+    izquierda no tiene ninguna propiedad de scroll — por eso queda
+    literalmente fija, nunca se mueve — y es el panel de la derecha el único
+    que puede desplazarse. Por debajo de `lg` la barra está oculta y esto no
+    aplica: la página entera vuelve a hacer scroll normal, como siempre.
   -->
-  <div class="mx-auto max-w-(--ui-container) px-4 pt-6 pb-8 sm:px-6 lg:px-8">
-    <div class="lg:grid lg:grid-cols-10 lg:gap-10">
+  <div class="mx-auto max-w-(--ui-container) px-4 pt-6 pb-8 sm:px-6 lg:px-8 lg:h-[calc(100vh-var(--ui-header-height))] lg:overflow-hidden">
+    <div class="lg:grid lg:grid-cols-10 lg:gap-10 lg:h-full">
       <!--
-        Sin alto fijo ni scroll propio: con solo 13 entradas cabe de sobra en
-        cualquier pantalla, y ese scroll interno era justo el problema — con
-        el mouse encima de la barra, la rueda scrolleaba SU propio contenido
-        en vez de dejar pasar el scroll de la página, y por eso "Guía" se
-        perdía de vista aunque el resto no se hubiera movido de verdad.
+        Sin alto fijo propio: ocupa el de su celda del grid (`lg:h-full`), que
+        ya alcanza de sobra para las 13 entradas. Sin overflow tampoco: al no
+        tener scroll propio, la rueda del mouse encima de la barra nunca
+        queda atrapada en ella — pasa de largo, pero ya no hay nada arriba
+        que la reciba porque este panel no se mueve.
       -->
-      <aside class="hidden lg:sticky lg:top-16 lg:col-span-2 lg:block">
+      <aside class="hidden lg:col-span-2 lg:block lg:h-full">
         <UNavigationMenu
           :items="items"
           orientation="vertical"
@@ -86,7 +103,17 @@ onMounted(() => {
         />
       </aside>
 
-      <div class="lg:col-span-8">
+      <!--
+        El scroll de este panel no debe verse: ni la barra clásica de Windows
+        ni ninguna otra. Se oculta con `scrollbar-width: none` (Firefox) y
+        `[&::-webkit-scrollbar]:hidden` (Chrome/Edge); el scroll en sí sigue
+        funcionando igual con la rueda del mouse, el touch o el teclado —
+        solo desaparece el dibujo de la barra.
+      -->
+      <div
+        ref="contentRef"
+        class="lg:col-span-8 lg:h-full lg:overflow-y-auto lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden"
+      >
         <slot />
       </div>
     </div>

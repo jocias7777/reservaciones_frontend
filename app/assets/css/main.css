@@ -39,3 +39,14 @@
 html:not(.dark) {
   --ui-text-highlighted: #000;
 }
+
+/*
+ * Sin esto, una pantalla más corta que la ventana no trae barra de scroll y
+ * una más larga sí — y como esa barra le resta ancho a la página, todo lo que
+ * está centrado (como la barra izquierda de "Cómo funciona") se corre unos
+ * pixeles entre una pantalla y otra. Se reserva el espacio siempre, haya o no
+ * contenido para hacer scroll.
+ */
+html {
+  scrollbar-gutter: stable;
+}
