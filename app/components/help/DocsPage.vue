@@ -40,6 +40,14 @@ const items = computed<NavigationMenuItem[]>(() =>
     return entry.to === route.path ? entry : { ...entry, class: 'text-toned' }
   })
 )
+
+/**
+ * Cada página de «Cómo funciona» es una ruta y un componente distintos, así
+ * que este armazón se vuelve a montar en cada una: si se llega con scroll
+ * (por ejemplo desde el icono del header estando abajo de otra pantalla), sin
+ * esto la página se ve "pegada" porque el scroll no se resetea solo.
+ */
+onMounted(() => window.scrollTo({ top: 0 }))
 </script>
 
 <template>
@@ -47,8 +55,14 @@ const items = computed<NavigationMenuItem[]>(() =>
   <UContainer class="pt-6 pb-8">
     <UPage>
       <template #left>
-        <!-- `UPageAside` trae `py-8` de fábrica; se deja en 0 porque el espacio ya lo pone el contenedor. -->
-        <UPageAside class="pt-0">
+        <!--
+          `UPageAside` trae `py-8` de fábrica; se deja en 0 porque el espacio ya
+          lo pone el contenedor. `sticky`/`top-16` (el `top-(--ui-header-height)`
+          de fábrica es lo mismo, 4rem) se repiten sin el prefijo `lg:` para que
+          quede firme aunque la variable no resuelva por lo que sea: solo el
+          contenido de la derecha debe moverse al hacer scroll.
+        -->
+        <UPageAside class="pt-0 sticky top-16">
           <UNavigationMenu
             :items="items"
             orientation="vertical"
@@ -57,7 +71,7 @@ const items = computed<NavigationMenuItem[]>(() =>
             highlight
             :ui="{
               link: 'text-[15px]',
-              label: 'text-[15px] font-semibold text-highlighted'
+              label: 'text-[15px] font-bold text-primary mt-6 first:mt-0'
             }"
           />
         </UPageAside>
