@@ -7,7 +7,6 @@ import {
   ROUTE_ACCESS,
   accessForRoute,
   resolveCan,
-  resolveCanRestoreAny,
   resolveCanVisit
 } from './access'
 
@@ -38,20 +37,20 @@ describe('resolveCan', () => {
   })
 })
 
-describe('resolveCanRestoreAny — caso reportado: "list" sin "restore" no debe mostrar la papelera', () => {
-  it('con "list" pero sin "restore" ni "bulk_restore" en el módulo, la papelera no se ofrece', () => {
-    const s = state({ granted: { 'roles::list': true, 'roles::restore': false, 'roles::bulk_restore': false } })
-    expect(resolveCanRestoreAny(s, 'roles')).toBe(false)
+describe('resolveCan — caso reportado: la papelera de un módulo debe depender solo de "restore"', () => {
+  it('con "restore" apagado, no importa que "bulk_restore" siga prendido: no cuenta para esto', () => {
+    // Esto es justo lo que se reportó: en el rol, con "Restaurar" apagado y
+    // "Restaurar masivo" prendido, el botón "Papelera" seguía saliendo. La
+    // papelera del listado depende únicamente de `restore` (ver
+    // `useModuleAccess.canRestore`); `bulk_restore` solo decide el botón de
+    // "Restaurar masivo" que hay DENTRO de la papelera, no si se ofrece.
+    const s = state({ granted: { 'roles::list': true, 'roles::restore': false, 'roles::bulk_restore': true } })
+    expect(resolveCan(s, 'roles', 'restore')).toBe(false)
   })
 
-  it('con "restore" concedido (aunque falte "bulk_restore"), la papelera sí se ofrece', () => {
+  it('con "restore" concedido, da igual lo que diga "bulk_restore": la papelera sí se ofrece', () => {
     const s = state({ granted: { 'roles::restore': true, 'roles::bulk_restore': false } })
-    expect(resolveCanRestoreAny(s, 'roles')).toBe(true)
-  })
-
-  it('con solo "bulk_restore" concedido, la papelera también se ofrece', () => {
-    const s = state({ granted: { 'roles::restore': false, 'roles::bulk_restore': true } })
-    expect(resolveCanRestoreAny(s, 'roles')).toBe(true)
+    expect(resolveCan(s, 'roles', 'restore')).toBe(true)
   })
 
   it('el mismo rol puede tener "restore" en un módulo y no en otro: cada módulo se decide aparte', () => {
@@ -59,15 +58,15 @@ describe('resolveCanRestoreAny — caso reportado: "list" sin "restore" no debe 
       granted: {
         'roles::list': true,
         'roles::restore': false,
-        'roles::bulk_restore': false,
+        'roles::bulk_restore': true,
         'users::list': true,
         'users::restore': true,
         'users::bulk_restore': false
       }
     })
 
-    expect(resolveCanRestoreAny(s, 'roles')).toBe(false)
-    expect(resolveCanRestoreAny(s, 'users')).toBe(true)
+    expect(resolveCan(s, 'roles', 'restore')).toBe(false)
+    expect(resolveCan(s, 'users', 'restore')).toBe(true)
   })
 })
 
@@ -84,19 +83,20 @@ describe('resolveCanVisit', () => {
     expect(resolveCanVisit(sinLista, '/roles')).toBe(false)
   })
 
-  it('la papelera de un módulo exige "restore" o "bulk_restore", no "list"', () => {
-    const soloLista = state({ granted: { 'roles::list': true, 'roles::restore': false, 'roles::bulk_restore': false } })
+  it('la papelera de un módulo exige "restore", no "list" ni "bulk_restore"', () => {
+    const soloLista = state({ granted: { 'roles::list': true, 'roles::restore': false } })
     expect(resolveCanVisit(soloLista, '/roles/papelera')).toBe(false)
+
+    // Igual con "restore" apagado y "bulk_restore" prendido: no basta.
+    const soloBulk = state({ granted: { 'roles::list': true, 'roles::restore': false, 'roles::bulk_restore': true } })
+    expect(resolveCanVisit(soloBulk, '/roles/papelera')).toBe(false)
 
     const conRestore = state({ granted: { 'roles::list': true, 'roles::restore': true } })
     expect(resolveCanVisit(conRestore, '/roles/papelera')).toBe(true)
-
-    const soloBulk = state({ granted: { 'roles::list': true, 'roles::bulk_restore': true } })
-    expect(resolveCanVisit(soloBulk, '/roles/papelera')).toBe(true)
   })
 
   it('la papelera de acciones cuelga de /roles/acciones pero exige el módulo "actions", no "roles"', () => {
-    const s = state({ granted: { 'roles::restore': true, 'actions::restore': false, 'actions::bulk_restore': false } })
+    const s = state({ granted: { 'roles::restore': true, 'actions::restore': false } })
     expect(resolveCanVisit(s, '/roles/acciones/papelera')).toBe(false)
   })
 
@@ -120,7 +120,7 @@ describe('resolveCanVisit', () => {
 })
 
 describe('accessForRoute — especificidad de prefijos', () => {
-  it('la ruta de papelera de un módulo resuelve contra ese módulo con ["restore","bulk_restore"], no contra el listado', () => {
+  it('la ruta de papelera de un módulo resuelve contra ese módulo con "restore", no contra el listado', () => {
     const cases: Array<[string, string]> = [
       ['/usuarios/papelera', 'users'],
       ['/roles/papelera', 'roles'],
@@ -129,9 +129,7 @@ describe('accessForRoute — especificidad de prefijos', () => {
     ]
 
     for (const [path, module] of cases) {
-      const resolved = accessForRoute(path)
-      expect(resolved?.module).toBe(module)
-      expect(resolved?.action).toEqual(['restore', 'bulk_restore'])
+      expect(accessForRoute(path)).toEqual({ prefix: path, module, action: 'restore' })
     }
   })
 
@@ -171,12 +169,7 @@ describe('módulos con listado y formulario completos', () => {
     // es `modulesRequiring('create')` sobre ROUTE_ACCESS, no una lista escrita
     // a mano. Que un módulo entre aquí depende únicamente de que declare esa
     // fila, igual que ya pasa con RESTORABLE_MODULES y "restore".
-    const modulosConCrear = new Set(
-      ROUTE_ACCESS
-        .filter(entry => entry.action === 'create' || (Array.isArray(entry.action) && entry.action.includes('create')))
-        .map(entry => entry.module)
-    )
-
+    const modulosConCrear = new Set(ROUTE_ACCESS.filter(entry => entry.action === 'create').map(entry => entry.module))
     expect(new Set(MANAGED_MODULES)).toEqual(modulosConCrear)
   })
 })

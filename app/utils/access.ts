@@ -9,18 +9,19 @@
  *
  * Casi siempre la acción es `list`, porque estas pantallas abren mostrando un
  * listado o una matriz, y eso va por `QUERY`. `read` no basta: es el permiso de
- * la ficha suelta y del desplegable de un formulario. La excepción son las
- * papeleras: piden `restore` o `bulk_restore` —son permisos aparte en el
- * backend y con cualquiera de los dos la pantalla ya sirve de algo—, de ahí que
- * acepten una lista en vez de una sola acción.
+ * la ficha suelta y del desplegable de un formulario. Las excepciones son los
+ * formularios de alta, que piden `create`, y las papeleras, que piden
+ * `restore`: es el permiso base para poder sacarle partido a esa pantalla —
+ * `bulk_restore` se prueba también (ver `RESTORABLE_MODULES`), pero solo para
+ * el botón de "Restaurar masivo" *dentro* de la papelera, no para decidir si
+ * se entra a ella.
  */
 export interface RouteAccess {
   /** Prefijo de ruta. El orden importa: gana el primero que encaje. */
   prefix: string
   /** `code` del módulo en `sa_permissions`. */
   module: string
-  /** Una acción, o varias cuando basta con cualquiera de ellas (ver las papeleras). */
-  action: string | string[]
+  action: string
 }
 
 /**
@@ -32,20 +33,19 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { prefix: '/usuarios/permisos', module: 'user_permissions', action: 'list' },
   { prefix: '/roles/permisos', module: 'role_permissions', action: 'list' },
   { prefix: '/roles/modulos', module: 'permissions', action: 'list' },
-  // Las papeleras piden `restore` o `bulk_restore`, no `list`; los formularios
-  // de alta piden `create`. Ambas van antes que el listado del que cuelgan
-  // porque, si no, "gana el primero que encaje" las mandaría al permiso del
-  // listado.
-  { prefix: '/roles/acciones/papelera', module: 'actions', action: ['restore', 'bulk_restore'] },
+  // Las papeleras piden `restore`, no `list`; los formularios de alta piden
+  // `create`. Ambas van antes que el listado del que cuelgan porque, si no,
+  // "gana el primero que encaje" las mandaría al permiso del listado.
+  { prefix: '/roles/acciones/papelera', module: 'actions', action: 'restore' },
   { prefix: '/roles/acciones/nueva', module: 'actions', action: 'create' },
   { prefix: '/roles/acciones', module: 'actions', action: 'list' },
-  { prefix: '/roles/categorias/papelera', module: 'action_categories', action: ['restore', 'bulk_restore'] },
+  { prefix: '/roles/categorias/papelera', module: 'action_categories', action: 'restore' },
   { prefix: '/roles/categorias/nueva', module: 'action_categories', action: 'create' },
   { prefix: '/roles/categorias', module: 'action_categories', action: 'list' },
-  { prefix: '/usuarios/papelera', module: 'users', action: ['restore', 'bulk_restore'] },
+  { prefix: '/usuarios/papelera', module: 'users', action: 'restore' },
   { prefix: '/usuarios/nuevo', module: 'users', action: 'create' },
   { prefix: '/usuarios', module: 'users', action: 'list' },
-  { prefix: '/roles/papelera', module: 'roles', action: ['restore', 'bulk_restore'] },
+  { prefix: '/roles/papelera', module: 'roles', action: 'restore' },
   { prefix: '/roles/nuevo', module: 'roles', action: 'create' },
   { prefix: '/roles', module: 'roles', action: 'list' }
 ]
@@ -76,19 +76,15 @@ export const LANDING_ROUTES = [
 /** Los módulos que hay que consultar para saber qué puede ver alguien. */
 export const GUARDED_MODULES = [...new Set(ROUTE_ACCESS.map(entry => entry.module))]
 
-/** Si una entrada de `ROUTE_ACCESS` pide esta acción (sola o dentro de su lista). */
-function routeRequires(entry: RouteAccess, action: string): boolean {
-  return Array.isArray(entry.action) ? entry.action.includes(action) : entry.action === action
-}
-
 /** Los módulos de las entradas de `ROUTE_ACCESS` que pidan `action`, sin repetidos. */
 function modulesRequiring(action: string): string[] {
-  return [...new Set(ROUTE_ACCESS.filter(entry => routeRequires(entry, action)).map(entry => entry.module))]
+  return [...new Set(ROUTE_ACCESS.filter(entry => entry.action === action).map(entry => entry.module))]
 }
 
 /**
  * Módulos con papelera en la interfaz: los únicos donde hace falta saber si
- * se puede `restore`/`bulk_restore`, además de `list`.
+ * se puede `restore` (para entrar y para el botón de cada fila) y
+ * `bulk_restore` (solo para el botón de "Restaurar masivo" de dentro).
  *
  * Sale de `ROUTE_ACCESS` en vez de escribirse aparte: son exactamente los
  * módulos que ya declaran una ruta de papelera ahí arriba, así que mantener
@@ -168,28 +164,8 @@ export function resolveCan(state: AccessState, module: string, action: string): 
   return state.source !== 'declared'
 }
 
-/**
- * Si se puede abrir una ruta concreta, a partir del estado ya resuelto.
- *
- * `required.action` puede ser una sola acción o una lista (las papeleras: con
- * `restore` o con `bulk_restore` ya sirve). Basta con que se cumpla una.
- */
+/** Si se puede abrir una ruta concreta, a partir del estado ya resuelto. */
 export function resolveCanVisit(state: AccessState, path: string): boolean {
   const required = accessForRoute(path)
-  if (!required) return true
-
-  const actions = Array.isArray(required.action) ? required.action : [required.action]
-  return actions.some(action => resolveCan(state, required.module, action))
-}
-
-/**
- * Si vale la pena ofrecer la papelera de este módulo, a partir del estado ya
- * resuelto.
- *
- * `restore` (una fila) y `bulk_restore` (varias) son permisos aparte en el
- * backend: alguien puede tener uno sin el otro y la papelera le sigue siendo
- * útil, así que basta con cualquiera de los dos.
- */
-export function resolveCanRestoreAny(state: AccessState, module: string): boolean {
-  return resolveCan(state, module, 'restore') || resolveCan(state, module, 'bulk_restore')
+  return required ? resolveCan(state, required.module, required.action) : true
 }

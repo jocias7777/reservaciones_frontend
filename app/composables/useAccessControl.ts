@@ -15,7 +15,7 @@ import type { ApiClient } from '~/plugins/api'
  *    403. Sale más caro —una petición por módulo— y solo averigua quién puede
  *    listar, que es lo que hace falta para decidir si se entra a una pantalla.
  *
- *    `restore`/`bulk_restore` y `create`/`update`/`delete`/`bulk_delete` se
+ *    `restore`, `bulk_restore` y `create`/`update`/`delete`/`bulk_delete` se
  *    prueban también, aparte: no hay un `GET` barato para ninguno de esos, así
  *    que se manda la petición real de escritura contra un id que no puede
  *    existir (o un cuerpo vacío, para `create`). Ninguno de los desenlaces
@@ -33,10 +33,10 @@ import type { ApiClient } from '~/plugins/api'
  * comprobarlo en cada petición. Aquí solo se evita ofrecer y abrir pantallas que
  * van a responder 403 en cuanto pidan sus datos.
  *
- * La decisión de qué se puede hacer con ese estado —`can`, `canVisit`,
- * `canRestoreAny`— es pura y vive en `app/utils/access.ts` (`resolveCan` y
- * compañía); este composable solo junta el estado reactivo y las llamadas de
- * red. Así la decisión se puede probar sin Nuxt de por medio.
+ * La decisión de qué se puede hacer con ese estado —`can`, `canVisit`— es pura
+ * y vive en `app/utils/access.ts` (`resolveCan` y compañía); este composable
+ * solo junta el estado reactivo y las llamadas de red. Así la decisión se
+ * puede probar sin Nuxt de por medio.
  */
 
 /** Lo publica el backend como `{ "users": ["read", "list"], ... }`. */
@@ -315,9 +315,9 @@ export function useAccessControl() {
   }
 
   /**
-   * La decisión en sí —`resolveCan` / `resolveCanVisit` / `resolveCanRestoreAny`—
-   * vive en `app/utils/access.ts` como funciones puras, para poder probarla con
-   * un test normal y corriente en vez de tener que montar toda la aplicación.
+   * La decisión en sí —`resolveCan` / `resolveCanVisit`— vive en
+   * `app/utils/access.ts` como funciones puras, para poder probarla con un
+   * test normal y corriente en vez de tener que montar toda la aplicación.
    * Aquí solo se les pasa el estado reactivo ya resuelto.
    */
   const state = computed<AccessState>(() => ({ granted: granted.value, loaded: loaded.value, source: source.value }))
@@ -328,10 +328,6 @@ export function useAccessControl() {
 
   function canVisit(path: string): boolean {
     return resolveCanVisit(state.value, path)
-  }
-
-  function canRestoreAny(module: string): boolean {
-    return resolveCanRestoreAny(state.value, module)
   }
 
   /** La primera pantalla que sí puede abrir, para no mandarlo a un muro. */
@@ -359,5 +355,5 @@ export function useAccessControl() {
     return ensureLoaded()
   }
 
-  return { granted, loaded, source, ensureLoaded, can, canVisit, canRestoreAny, firstAllowedRoute, reset, refresh }
+  return { granted, loaded, source, ensureLoaded, can, canVisit, firstAllowedRoute, reset, refresh }
 }
