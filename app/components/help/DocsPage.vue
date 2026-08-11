@@ -43,11 +43,12 @@ const items = computed<NavigationMenuItem[]>(() =>
 </script>
 
 <template>
-  <UContainer class="pt-1 pb-8">
+  <!-- Mismo `py-6` que usan las demás pantallas (Usuarios, Roles...) bajo el header. -->
+  <UContainer class="pt-6 pb-8">
     <UPage>
       <template #left>
-        <!-- `UPageAside` trae `py-8` de fábrica; con `pt-2` se queda pegada al header, como el resto. -->
-        <UPageAside class="pt-2">
+        <!-- `UPageAside` trae `py-8` de fábrica; se deja en 0 porque el espacio ya lo pone el contenedor. -->
+        <UPageAside class="pt-0">
           <UNavigationMenu
             :items="items"
             orientation="vertical"
@@ -62,8 +63,8 @@ const items = computed<NavigationMenuItem[]>(() =>
         </UPageAside>
       </template>
 
-      <!-- `UPageBody` trae `mt-8` de fábrica: por eso el contenido quedaba tan lejos del header. -->
-      <UPageBody class="mt-1">
+      <!-- `UPageBody` trae `mt-8` de fábrica; mismo motivo. -->
+      <UPageBody class="mt-0">
         <slot />
       </UPageBody>
     </UPage>
