@@ -57,36 +57,32 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- Mismo `py-6` que usan las demás pantallas (Usuarios, Roles...) bajo el header. -->
-  <UContainer class="pt-6 pb-8">
-    <UPage>
-      <template #left>
-        <!--
-          Alto fijo (no un simple tope máximo) de la altura visible bajo el
-          header: así la columna siempre tiene sitio de sobra para quedarse
-          fija, sin depender de que el contenido de la derecha sea más alto
-          que la propia barra. Solo el contenido de la derecha se mueve al
-          hacer scroll.
-        -->
-        <UPageAside class="pt-0 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto">
-          <UNavigationMenu
-            :items="items"
-            orientation="vertical"
-            variant="link"
-            color="primary"
-            highlight
-            :ui="{
-              link: 'text-[15px] ps-5',
-              label: 'text-[15px] font-semibold text-highlighted mt-6 first:mt-0'
-            }"
-          />
-        </UPageAside>
-      </template>
+  <!--
+    Grid propio, sin pasar por `UPage`/`UPageAside`/`UPageBody`: son varias
+    capas de componentes reenviándose clases entre sí y, aun con las clases
+    correctas puestas, la barra seguía sin quedarse fija. Escrito a mano acá
+    no queda ninguna duda de qué elemento tiene `sticky` y cuál se mueve.
+  -->
+  <div class="mx-auto max-w-(--ui-container) px-4 pt-6 pb-8 sm:px-6 lg:px-8">
+    <div class="lg:grid lg:grid-cols-10 lg:gap-10">
+      <!-- Alto fijo (pantalla menos header) para que siempre tenga sitio de sobra donde quedarse fija. -->
+      <aside class="hidden lg:sticky lg:top-16 lg:col-span-2 lg:block lg:h-[calc(100vh-4rem)] lg:overflow-y-auto">
+        <UNavigationMenu
+          :items="items"
+          orientation="vertical"
+          variant="link"
+          color="primary"
+          highlight
+          :ui="{
+            link: 'text-[15px] ps-5',
+            label: 'text-[15px] font-semibold text-highlighted mt-6 first:mt-0'
+          }"
+        />
+      </aside>
 
-      <!-- `UPageBody` trae `mt-8` de fábrica; mismo motivo. -->
-      <UPageBody class="mt-0">
+      <div class="lg:col-span-8">
         <slot />
-      </UPageBody>
-    </UPage>
-  </UContainer>
+      </div>
+    </div>
+  </div>
 </template>
