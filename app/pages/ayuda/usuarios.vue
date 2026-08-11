@@ -16,6 +16,49 @@ useSeoMeta({ title: 'Usuarios · Cómo funciona' })
       personales —nombre, teléfono, foto—, guardado aparte de la cuenta.
     </p>
 
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      El listado
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Se busca por correo o nombre de usuario, y se filtra por estado con el desplegable de la barra de
+      herramientas: todos, solo activos o solo inactivos.
+    </p>
+    <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-muted">
+      <li><strong class="text-highlighted">Usuario</strong> — foto, nombre (o usuario, o correo si no hay perfil) y correo debajo.</li>
+      <li><strong class="text-highlighted">Rol</strong> — el rol asignado, o «Sin rol» si no tiene.</li>
+      <li><strong class="text-highlighted">Estado</strong> — «Activo» o «Inactivo».</li>
+      <li><strong class="text-highlighted">Creado</strong> — fecha de alta de la cuenta.</li>
+    </ul>
+    <p class="mt-3 text-sm text-muted">
+      Con varias cuentas seleccionadas aparece «Eliminar (N)» para mandarlas todas a la papelera de una vez, con
+      su propia confirmación.
+    </p>
+
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      Agregar o editar
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      El formulario se reparte en dos tarjetas.
+    </p>
+    <p class="mt-4 text-sm font-medium text-highlighted">
+      Cuenta — con qué inicia sesión
+    </p>
+    <ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-muted">
+      <li><strong class="text-highlighted">Correo</strong> — obligatorio, con formato válido.</li>
+      <li><strong class="text-highlighted">Nombre de usuario</strong> — opcional.</li>
+      <li><strong class="text-highlighted">Contraseña</strong> — obligatoria al crear (mínimo 8 caracteres); al editar se deja vacía para conservar la actual.</li>
+      <li><strong class="text-highlighted">Rol</strong> — se elige de un buscador; «Sin rol asignado» es una opción explícita.</li>
+      <li><strong class="text-highlighted">Cuenta activa</strong> — el interruptor que decide si puede iniciar sesión, sin tocar el rol.</li>
+    </ul>
+    <p class="mt-4 text-sm font-medium text-highlighted">
+      Perfil — datos personales, todos opcionales
+    </p>
+    <ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-muted">
+      <li>Nombre, apellidos, teléfono (solo números, espacios y <code class="rounded bg-elevated px-1 py-0.5">+ ( ) -</code>) y dirección.</li>
+      <li>Fecha de nacimiento — la edad se calcula sola, no se escribe a mano.</li>
+      <li>Foto — se recorta en cuadrado y se comprime en el propio navegador antes de guardarse; no hay endpoint de subida de archivos todavía.</li>
+    </ul>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
         El estado activo/inactivo y el rol son cosas separadas: una cuenta inactiva no puede iniciar sesión

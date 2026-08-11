@@ -16,6 +16,16 @@ useSeoMeta({ title: 'Permisos por rol · Cómo funciona' })
       las casillas y se guarda.
     </p>
 
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      Cómo se usa
+    </h2>
+    <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted">
+      <li>Se elige el rol en el buscador de arriba — si hay cambios sin guardar, avisa antes de dejarte cambiar de rol.</li>
+      <li>El resumen muestra cuántos permisos tiene activos de su total, en cuántos módulos y acciones, con un botón para marcarlos o quitarlos todos de golpe.</li>
+      <li>Cada módulo es una tarjeta plegable, con sus acciones repartidas por categoría (Consulta, Gestión, Eliminación…) y un interruptor por acción — en rojo las que son difíciles de revertir, como eliminar en lote.</li>
+      <li>El pie de guardar solo aparece con cambios pendientes, y dice cuántos se van a conceder y cuántos a revocar.</li>
+    </ol>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
         Exige el permiso «Asignar permisos» de este mismo módulo, no «Listar»: así se puede dejar administrar la
@@ -24,6 +34,14 @@ useSeoMeta({ title: 'Permisos por rol · Cómo funciona' })
       <li>
         Guardar solo toca lo que cambió: lo quitado se revoca en una sola llamada, lo agregado se concede en
         otra — no una petición por casilla.
+      </li>
+      <li>
+        Ninguna de las dos llamadas es atómica: si una combinación falla (por ejemplo, por un duplicado suelto),
+        no cancela el resto del lote. El aviso dice cuántas fallaron y por qué.
+      </li>
+      <li>
+        Guardar refresca de inmediato los permisos de quien lo hizo, para que los botones que dependen de este
+        mismo rol —Agregar, Editar, Eliminar, Papelera…— reflejen el cambio sin tener que cerrar sesión.
       </li>
     </ul>
 

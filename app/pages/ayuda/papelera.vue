@@ -37,10 +37,20 @@ useSeoMeta({ title: 'Papelera y restaurar · Cómo funciona' })
       </div>
     </div>
 
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      La pantalla de papelera
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Cada módulo tiene la suya, con las mismas columnas que su listado principal y su propio buscador. Al
+      restaurar, el registro vuelve a aparecer en el listado normal — no hay que volver a crearlo ni
+      reconfigurarlo.
+    </p>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
-        Eliminar (borrado lógico) y eliminar permanente son cosas distintas: lo primero manda a la papelera, lo
-        segundo la vacía sin vuelta atrás.
+        «Eliminar permanente» y «Eliminar masivo permanente» existen como permisos en el catálogo de acciones —
+        se pueden conceder o revocar en la matriz—, pero hoy ninguna pantalla los usa: nada en el frontend borra
+        de verdad un registro de la base de datos, solo lo manda a la papelera.
       </li>
     </ul>
 

@@ -16,6 +16,25 @@ useSeoMeta({ title: 'Módulos del sistema · Cómo funciona' })
       incluso este mismo catálogo—. Cada módulo es solo un código y un nombre.
     </p>
 
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      El listado
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Se busca por código, nombre o descripción. La tabla es sencilla a propósito: módulo, descripción y fecha de
+      creación — no hay más que administrar aquí, ni papelera ni edición en lote.
+    </p>
+
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      «Sin uso en el código»
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      La pantalla pide al backend en qué módulos comprueba de verdad alguna acción
+      (<code class="rounded bg-elevated px-1 py-0.5">GET /permissions/available-actions</code>) y compara ese
+      resultado con el catálogo. Un módulo dado de alta que no aparezca ahí lleva esa etiqueta: se puede conceder
+      y revocar sin que nada cambie en la práctica, hasta que alguna ruta lo proteja con
+      <code class="rounded bg-elevated px-1 py-0.5">require_permission('&lt;código&gt;', ...)</code>.
+    </p>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
         Dar de alta un módulo aquí no restringe nada por sí solo: solo importa cuando alguna ruta del backend lo

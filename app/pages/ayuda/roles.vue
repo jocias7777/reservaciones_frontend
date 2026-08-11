@@ -20,6 +20,36 @@ useSeoMeta({ title: 'Roles · Cómo funciona' })
       >Permisos por rol</NuxtLink>.
     </p>
 
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      El listado
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Se busca por nombre o descripción. Cada fila muestra el rol con su descripción, en cuántos usuarios está
+      asignado ahora mismo y cuándo se creó.
+    </p>
+    <p class="mt-3 text-sm text-muted">
+      Eliminar uno o varios roles seleccionados los manda a la papelera; el aviso de confirmación recuerda que
+      sus usuarios se quedan sin rol mientras tanto.
+    </p>
+
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      Agregar o editar
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Solo dos campos, los únicos que el backend acepta al crear un rol:
+    </p>
+    <ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-muted">
+      <li><strong class="text-highlighted">Nombre</strong> — entre 3 y 50 caracteres: letras, números, guiones o espacios (por ejemplo «recepcion» o «supervisor»).</li>
+      <li><strong class="text-highlighted">Descripción</strong> — obligatoria, para qué sirve el rol.</li>
+    </ul>
+    <p class="mt-3 text-sm text-muted">
+      Qué puede hacer el rol no se toca aquí: eso se define en
+      <NuxtLink
+        to="/ayuda/permisos-por-rol"
+        class="text-primary underline"
+      >Permisos por rol</NuxtLink>.
+    </p>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
         Asignarle un rol a alguien no le copia los permisos: el usuario sigue leyendo lo que el rol tenga

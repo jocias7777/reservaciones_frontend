@@ -16,6 +16,33 @@ useSeoMeta({ title: 'Acciones · Cómo funciona' })
       permiso es la combinación de un módulo con una acción.
     </p>
 
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      El listado
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Se busca por código, nombre o descripción. Cada fila muestra:
+    </p>
+    <ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-muted">
+      <li><strong class="text-highlighted">Acción</strong> — nombre visible y código debajo.</li>
+      <li><strong class="text-highlighted">Categoría</strong> — el bloque en el que aparece, o «Sin categoría».</li>
+      <li><strong class="text-highlighted">Efecto real</strong> — en cuántos módulos la comprueba de verdad el backend (con el detalle en el tooltip), o «Todavía sin efecto» si ninguno lo hace aún.</li>
+      <li><strong class="text-highlighted">Descripción</strong>.</li>
+    </ul>
+    <p class="mt-3 text-sm text-muted">
+      Eliminar una acción concedida en algún permiso no se puede: primero hay que quitarla de ahí. El aviso de
+      confirmación lo recuerda antes de intentarlo.
+    </p>
+
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      Agregar o editar
+    </h2>
+    <ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-muted">
+      <li><strong class="text-highlighted">Código</strong> — lo que compara el backend (<code class="rounded bg-elevated px-1 py-0.5">require_permission(modulo, '&lt;código&gt;')</code>). Solo minúsculas, números y guion bajo, empezando por letra — por ejemplo «bulk_update». Deja de poder cambiarse en cuanto la acción esté concedida en algún permiso.</li>
+      <li><strong class="text-highlighted">Nombre visible</strong> — el que aparece en la matriz.</li>
+      <li><strong class="text-highlighted">Categoría</strong> — obligatoria: el bloque en el que caerá.</li>
+      <li><strong class="text-highlighted">Descripción</strong> — opcional, se muestra junto al interruptor de la acción.</li>
+    </ul>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
         Una acción se agrupa dentro de una
