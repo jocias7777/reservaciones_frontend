@@ -1,11 +1,11 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 /**
- * Navegación del header: un solo apartado, "Seguridad", con sus pantallas
- * dentro.
+ * Navegación del header: el apartado "Seguridad" con sus pantallas dentro, y
+ * al lado "Cómo funciona", suelto y sin permiso de por medio.
  *
- * Se arma con `children` de `UNavigationMenu`, que en horizontal despliega el
- * submenú y añade la flecha hacia abajo por su cuenta.
+ * El apartado se arma con `children` de `UNavigationMenu`, que en horizontal
+ * despliega el submenú y añade la flecha hacia abajo por su cuenta.
  */
 export function useAppNavigation() {
   const route = useRoute()
@@ -27,6 +27,7 @@ export function useAppNavigation() {
   const isUsuarios = computed(() =>
     route.path.startsWith('/usuarios') && !isPermisosUsuario.value
   )
+  const isAyuda = computed(() => route.path.startsWith('/ayuda'))
 
   /**
    * Solo se ofrece lo que se puede abrir.
@@ -91,19 +92,31 @@ export function useAppNavigation() {
       }
     ])
 
+    const groups: NavigationMenuItem[] = []
+
     // Sin ninguna pantalla a la que ir, el apartado entero sobra: un menú
     // desplegable vacío se abre y no ofrece nada.
-    if (!children.length) return []
-
-    return [
-      {
+    if (children.length) {
+      groups.push({
         // El apartado no se marca como activo: es el único del menú y siempre
         // estarías dentro de él. Se queda en gris, como en la documentación de
         // Nuxt UI, y el resaltado lo lleva la pantalla concreta dentro del submenú.
         label: 'Seguridad',
         children
-      }
-    ]
+      })
+    }
+
+    // Aparte del apartado de arriba y no dentro: no es una pantalla de datos,
+    // es la explicación de cómo funcionan las demás. No exige ningún permiso
+    // —cualquier cuenta con sesión puede leerla—, así que no pasa por `visible`.
+    groups.push({
+      label: 'Cómo funciona',
+      icon: 'i-lucide-compass',
+      to: '/ayuda',
+      active: isAyuda.value
+    })
+
+    return groups
   })
 
   return { items }
