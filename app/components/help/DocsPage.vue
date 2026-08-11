@@ -46,8 +46,14 @@ const items = computed<NavigationMenuItem[]>(() =>
  * que este armazón se vuelve a montar en cada una: si se llega con scroll
  * (por ejemplo desde el icono del header estando abajo de otra pantalla), sin
  * esto la página se ve "pegada" porque el scroll no se resetea solo.
+ *
+ * El reseteo se hace después de `nextTick` y del siguiente frame porque el
+ * propio router puede tocar el scroll justo después de montar: si se hace
+ * antes, esa segunda pisada deja la página donde estaba.
  */
-onMounted(() => window.scrollTo({ top: 0 }))
+onMounted(() => {
+  nextTick(() => requestAnimationFrame(() => window.scrollTo({ top: 0 })))
+})
 </script>
 
 <template>
@@ -56,13 +62,13 @@ onMounted(() => window.scrollTo({ top: 0 }))
     <UPage>
       <template #left>
         <!--
-          `UPageAside` trae `py-8` de fábrica; se deja en 0 porque el espacio ya
-          lo pone el contenedor. `sticky`/`top-16` (el `top-(--ui-header-height)`
-          de fábrica es lo mismo, 4rem) se repiten sin el prefijo `lg:` para que
-          quede firme aunque la variable no resuelva por lo que sea: solo el
-          contenido de la derecha debe moverse al hacer scroll.
+          Alto fijo (no un simple tope máximo) de la altura visible bajo el
+          header: así la columna siempre tiene sitio de sobra para quedarse
+          fija, sin depender de que el contenido de la derecha sea más alto
+          que la propia barra. Solo el contenido de la derecha se mueve al
+          hacer scroll.
         -->
-        <UPageAside class="pt-0 sticky top-16">
+        <UPageAside class="pt-0 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto">
           <UNavigationMenu
             :items="items"
             orientation="vertical"
