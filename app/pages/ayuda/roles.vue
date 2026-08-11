@@ -31,5 +31,53 @@ useSeoMeta({ title: 'Roles · Cómo funciona' })
         nadie.
       </li>
     </ul>
+
+    <HelpMockupFrame>
+      <div class="flex flex-wrap items-center gap-6 rounded-lg border border-default bg-default p-4">
+        <div class="flex items-center gap-3">
+          <HelpCalloutBadge :n="1" />
+          <UIcon
+            name="i-lucide-shield"
+            class="size-5 text-dimmed"
+          />
+          <div>
+            <p class="text-sm font-medium text-highlighted">
+              Supervisor
+            </p>
+            <p class="text-xs text-muted">
+              Acceso de solo lectura a reportes
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <HelpCalloutBadge :n="2" />
+          <UBadge
+            label="12 usuarios"
+            color="neutral"
+            variant="subtle"
+          />
+        </div>
+
+        <div class="ms-auto flex items-center gap-2">
+          <HelpCalloutBadge :n="3" />
+          <UButton
+            icon="i-lucide-archive"
+            label="Papelera"
+            color="neutral"
+            variant="subtle"
+            size="sm"
+          />
+        </div>
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'Nombre y descripción del rol',
+          'Cuántos usuarios lo tienen asignado ahora mismo',
+          'Enviarlo a la papelera no les quita el rol a esos usuarios: solo deja de darles permisos mientras esté ahí'
+        ]"
+      />
+    </HelpMockupFrame>
   </HelpDocsPage>
 </template>

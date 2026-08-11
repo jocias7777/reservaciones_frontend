@@ -26,5 +26,60 @@ useSeoMeta({ title: 'Permisos por rol · Cómo funciona' })
         otra — no una petición por casilla.
       </li>
     </ul>
+
+    <HelpMockupFrame>
+      <div class="rounded-lg border border-default bg-default p-4">
+        <div class="flex items-center gap-2">
+          <HelpCalloutBadge :n="1" />
+          <UIcon
+            name="i-lucide-users"
+            class="size-5 text-dimmed"
+          />
+          <p class="text-sm font-semibold text-highlighted">
+            Usuarios
+          </p>
+          <UBadge
+            label="2 / 3"
+            color="neutral"
+            variant="subtle"
+            class="ms-auto"
+          />
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+          <HelpCalloutBadge :n="2" />
+          <USwitch
+            :model-value="true"
+            label="Listar"
+          />
+          <USwitch
+            :model-value="true"
+            label="Crear"
+          />
+          <USwitch
+            :model-value="false"
+            color="error"
+            label="Eliminar"
+          />
+        </div>
+      </div>
+
+      <div class="mt-4 flex items-center gap-2">
+        <HelpCalloutBadge :n="3" />
+        <UButton
+          label="Guardar cambios"
+          color="primary"
+          size="sm"
+        />
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'Cada tarjeta es un módulo, con cuántas acciones tiene marcadas',
+          'Cada interruptor es una acción de ese módulo — la roja avisa que es difícil de revertir',
+          'El pie de guardar solo aplica lo que cambió desde que se abrió la pantalla'
+        ]"
+      />
+    </HelpMockupFrame>
   </HelpDocsPage>
 </template>

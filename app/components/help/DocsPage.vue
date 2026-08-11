@@ -26,7 +26,7 @@ const items: NavigationMenuItem[] = [
 </script>
 
 <template>
-  <UContainer class="py-8">
+  <UContainer class="pt-4 pb-8">
     <UPage>
       <template #left>
         <UPageAside>
@@ -36,6 +36,7 @@ const items: NavigationMenuItem[] = [
             variant="link"
             color="primary"
             highlight
+            :ui="{ link: 'text-[15px]', label: 'text-[13px]' }"
           />
         </UPageAside>
       </template>

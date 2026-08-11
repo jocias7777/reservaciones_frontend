@@ -23,5 +23,40 @@ useSeoMeta({ title: 'Módulos del sistema · Cómo funciona' })
         protegen nada.
       </li>
     </ul>
+
+    <HelpMockupFrame>
+      <div class="flex flex-wrap items-center gap-6 rounded-lg border border-default bg-default p-4">
+        <div class="flex items-center gap-2">
+          <HelpCalloutBadge :n="1" />
+          <UBadge
+            label="users"
+            color="neutral"
+            variant="subtle"
+          />
+        </div>
+        <div class="flex items-center gap-2">
+          <HelpCalloutBadge :n="2" />
+          <p class="text-sm text-highlighted">
+            Usuarios
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <HelpCalloutBadge :n="3" />
+          <UBadge
+            label="En uso"
+            color="success"
+            variant="subtle"
+          />
+        </div>
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'Código — el identificador que usa el backend para reconocerlo',
+          'Nombre — lo que se muestra en las pantallas de permisos',
+          'Si ya hay una ruta del backend que lo comprueba de verdad, o todavía no'
+        ]"
+      />
+    </HelpMockupFrame>
   </HelpDocsPage>
 </template>

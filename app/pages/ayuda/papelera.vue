@@ -43,5 +43,59 @@ useSeoMeta({ title: 'Papelera y restaurar · Cómo funciona' })
         segundo la vacía sin vuelta atrás.
       </li>
     </ul>
+
+    <HelpMockupFrame>
+      <div class="flex flex-wrap items-center gap-3">
+        <UInput
+          icon="i-lucide-search"
+          placeholder="Buscar..."
+          disabled
+          class="max-w-56"
+        />
+        <div class="flex items-center gap-2">
+          <HelpCalloutBadge :n="1" />
+          <UButton
+            icon="i-lucide-archive"
+            label="Papelera"
+            color="neutral"
+            variant="subtle"
+            size="sm"
+          />
+        </div>
+      </div>
+
+      <div class="mt-4 flex flex-wrap items-center gap-6 rounded-lg border border-default bg-default p-3">
+        <p class="text-sm text-highlighted">
+          Carlos Ruiz
+        </p>
+        <div class="ms-auto flex items-center gap-2">
+          <HelpCalloutBadge :n="2" />
+          <UButton
+            icon="i-lucide-archive-restore"
+            color="success"
+            variant="ghost"
+            size="sm"
+          />
+        </div>
+      </div>
+
+      <div class="mt-3 flex items-center gap-2">
+        <HelpCalloutBadge :n="3" />
+        <UButton
+          icon="i-lucide-archive-restore"
+          label="Restaurar masivo (2)"
+          color="success"
+          size="sm"
+        />
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'Botón «Papelera», junto al buscador — exige el permiso «Restaurar» de ese módulo',
+          'Restaurar un registro a la vez, dentro de su papelera',
+          'Restaurar varios seleccionados de una vez — permiso aparte, «Restaurar masivo»'
+        ]"
+      />
+    </HelpMockupFrame>
   </HelpDocsPage>
 </template>
