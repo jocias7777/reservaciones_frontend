@@ -53,6 +53,20 @@ export function useRolesApi() {
 
     /** `DELETE /roles/bulk` — borrado lógico masivo. */
     bulkRemove: (ids: string[]) =>
-      unwrap(api<ApiEnvelope<null>>('/roles/bulk', { method: 'DELETE', body: { ids } }))
+      unwrap(api<ApiEnvelope<null>>('/roles/bulk', { method: 'DELETE', body: { ids } })),
+
+    /** `QUERY /roles/trash` — la papelera: mismos filtros, expand y paginación que el listado. */
+    trash: (query: AdvancedQuery = {}) =>
+      unwrap(api<ApiEnvelope<PaginatedResult<RoleWithRelations>>>('/roles/trash', {
+        method: 'QUERY',
+        body: query
+      })),
+
+    /** `POST /roles/:id/restore` — saca el rol de la papelera. Responde `data: null`. */
+    restore: (id: string) => unwrap(api<ApiEnvelope<null>>(`/roles/${id}/restore`, { method: 'POST' })),
+
+    /** `POST /roles/bulk/restore` — restauración masiva. Responde `data: null`. */
+    bulkRestore: (ids: string[]) =>
+      unwrap(api<ApiEnvelope<null>>('/roles/bulk/restore', { method: 'POST', body: { ids } }))
   }
 }

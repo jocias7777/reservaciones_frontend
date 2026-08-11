@@ -42,6 +42,20 @@ export function useUsersApi() {
 
     /** `DELETE /users/bulk` — borrado lógico masivo. */
     bulkRemove: (ids: string[]) =>
-      unwrap(api<ApiEnvelope<User[]>>('/users/bulk', { method: 'DELETE', body: { ids } }))
+      unwrap(api<ApiEnvelope<User[]>>('/users/bulk', { method: 'DELETE', body: { ids } })),
+
+    /** `QUERY /users/trash` — la papelera: mismos filtros, expand y paginación que el listado. */
+    trash: (query: AdvancedQuery = {}) =>
+      unwrap(api<ApiEnvelope<PaginatedResult<UserWithRelations>>>('/users/trash', {
+        method: 'QUERY',
+        body: query
+      })),
+
+    /** `POST /users/:id/restore` — saca la cuenta de la papelera. Responde `data: null`. */
+    restore: (id: string) => unwrap(api<ApiEnvelope<null>>(`/users/${id}/restore`, { method: 'POST' })),
+
+    /** `POST /users/bulk/restore` — restauración masiva. Responde `data: null`. */
+    bulkRestore: (ids: string[]) =>
+      unwrap(api<ApiEnvelope<null>>('/users/bulk/restore', { method: 'POST', body: { ids } }))
   }
 }

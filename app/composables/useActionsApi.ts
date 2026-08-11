@@ -61,6 +61,17 @@ export function useActionsApi() {
 
     /** `DELETE /actions/bulk` — borrado lógico masivo (todo o nada). */
     bulkRemove: (ids: string[]) =>
-      unwrap(api<ApiEnvelope<null>>('/actions/bulk', { method: 'DELETE', body: { ids } }))
+      unwrap(api<ApiEnvelope<null>>('/actions/bulk', { method: 'DELETE', body: { ids } })),
+
+    /** `QUERY /actions/trash` — la papelera: mismos filtros, expand y paginación que el listado. */
+    trash: (query: AdvancedQuery = {}) =>
+      unwrap(api<ApiEnvelope<PaginatedResult<Action>>>('/actions/trash', { method: 'QUERY', body: query })),
+
+    /** `POST /actions/:id/restore` — saca la acción de la papelera. Responde `data: null`. */
+    restore: (id: string) => unwrap(api<ApiEnvelope<null>>(`/actions/${id}/restore`, { method: 'POST' })),
+
+    /** `POST /actions/bulk/restore` — restauración masiva. Responde `data: null`. */
+    bulkRestore: (ids: string[]) =>
+      unwrap(api<ApiEnvelope<null>>('/actions/bulk/restore', { method: 'POST', body: { ids } }))
   }
 }

@@ -59,6 +59,21 @@ export function useActionCategoriesApi() {
 
     /** `DELETE /action-categories/bulk` — borrado lógico masivo. */
     bulkRemove: (ids: string[]) =>
-      unwrap(api<ApiEnvelope<null>>('/action-categories/bulk', { method: 'DELETE', body: { ids } }))
+      unwrap(api<ApiEnvelope<null>>('/action-categories/bulk', { method: 'DELETE', body: { ids } })),
+
+    /** `QUERY /action-categories/trash` — la papelera: mismos filtros, expand y paginación que el listado. */
+    trash: (query: AdvancedQuery = {}) =>
+      unwrap(api<ApiEnvelope<PaginatedResult<ActionCategory>>>('/action-categories/trash', {
+        method: 'QUERY',
+        body: query
+      })),
+
+    /** `POST /action-categories/:id/restore` — saca la categoría de la papelera. Responde `data: null`. */
+    restore: (id: string) =>
+      unwrap(api<ApiEnvelope<null>>(`/action-categories/${id}/restore`, { method: 'POST' })),
+
+    /** `POST /action-categories/bulk/restore` — restauración masiva. Responde `data: null`. */
+    bulkRestore: (ids: string[]) =>
+      unwrap(api<ApiEnvelope<null>>('/action-categories/bulk/restore', { method: 'POST', body: { ids } }))
   }
 }

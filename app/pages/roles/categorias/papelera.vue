@@ -6,36 +6,16 @@ definePageMeta({
   layout: 'app'
 })
 
-useSeoMeta({ title: 'Categorías de acciones' })
+useSeoMeta({ title: 'Papelera de categorías' })
 
-/**
- * Catálogo de categorías (`sa_category_permissions`): los bloques en los que se
- * reparten las acciones dentro de la tarjeta de cada módulo.
- *
- * Cada fila es literalmente lo que se ve en la matriz de permisos: nombre =
- * título del bloque, descripción = subtítulo, icono y orden = cómo y dónde
- * aparece. Por eso el listado se ordena por `sort_order`: se lee en el mismo
- * orden en el que se mostrará.
- */
 const categoriesApi = useActionCategoriesApi()
-const access = useAccessControl()
 
-/** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
-const canRestore = computed(() => access.canRestoreAny('action_categories'))
-
-/** Botones de acción de cada fila: iconos algo menores que los del resto. */
+/** Botón de restaurar de cada fila: mismo tamaño de icono que el resto de la app. */
 const rowAction = {
-  color: 'neutral',
+  color: 'success',
   variant: 'ghost',
   ui: { leadingIcon: 'size-5' }
 } satisfies ButtonProps
-
-/** Acción principal de la pantalla: la misma en la cabecera y en el estado vacío. */
-const addCategory: ButtonProps = {
-  label: 'Agregar categoría',
-  icon: 'i-lucide-shapes',
-  to: '/roles/categorias/nueva'
-}
 
 const {
   items,
@@ -48,8 +28,8 @@ const {
   error,
   refresh
 } = useResourceList<ActionCategory>({
-  key: 'action-categories:list',
-  fetcher: query => categoriesApi.query(query),
+  key: 'action-categories:trash',
+  fetcher: query => categoriesApi.trash(query),
   searchFields: ['name', 'description'],
   expand: ['actions'],
   sortBy: 'sort_order',
@@ -66,29 +46,35 @@ const columns: TableColumn<ActionCategory>[] = [
   { id: 'row-actions' }
 ]
 
-const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useResourceRemoval<ActionCategory>({
-  remove: category => categoriesApi.remove(category.id),
-  bulkRemove: ids => categoriesApi.bulkRemove(ids),
+const { rowSelection, selectedIds, restoring, restoreOne, restoreSelected } = useResourceRestore<ActionCategory>({
+  restore: category => categoriesApi.restore(category.id),
+  bulkRestore: ids => categoriesApi.bulkRestore(ids),
   refresh,
-  successOne: category => ['Categoría eliminada', `Las acciones de «${category.name}» pasan al bloque «Otras acciones».`],
-  successMany: count => ['Categorías eliminadas', `${count} categoría(s) pasaron a la papelera.`]
+  successOne: category => ['Categoría restaurada', `«${category.name}» volvió a estar disponible.`],
+  successMany: count => ['Categorías restauradas', `${count} categoría(s) volvieron a estar disponibles.`]
 })
 </script>
 
 <template>
   <UContainer class="py-6 space-y-4">
     <BasePageHeader
-      title="Categorías de acciones"
-      description="Los bloques en los que se agrupan las acciones dentro de cada módulo, en el orden en que se muestran."
+      title="Papelera de categorías"
+      description="Categorías eliminadas: se pueden recuperar mientras sigan aquí."
     >
       <template #actions>
-        <UButton v-bind="addCategory" />
+        <UButton
+          label="Volver"
+          icon="i-lucide-arrow-left"
+          color="neutral"
+          variant="outline"
+          to="/roles/categorias"
+        />
       </template>
     </BasePageHeader>
 
     <BaseErrorAlert
       :error="error"
-      title="No se pudieron cargar las categorías"
+      title="No se pudo cargar la papelera"
       @retry="refresh"
     />
 
@@ -99,28 +85,14 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
     >
       <template #actions>
         <UButton
-          v-if="canRestore"
-          label="Papelera"
-          icon="i-lucide-archive"
-          color="neutral"
-          variant="outline"
-          to="/roles/categorias/papelera"
-        />
-
-        <BaseConfirmPopover
           v-if="selectedIds.length"
-          title="¿Eliminar las categorías seleccionadas?"
-          :description="`Se enviarán ${selectedIds.length} categoría(s) a la papelera. Sus acciones no se borran: pasan al bloque «Otras acciones».`"
-          :loading="removing"
-          @confirm="removeSelected"
-        >
-          <UButton
-            :label="`Eliminar (${selectedIds.length})`"
-            icon="i-lucide-trash-2"
-            color="error"
-            variant="subtle"
-          />
-        </BaseConfirmPopover>
+          :label="`Recuperar (${selectedIds.length})`"
+          icon="i-lucide-archive-restore"
+          color="success"
+          variant="subtle"
+          :loading="restoring"
+          @click="restoreSelected"
+        />
       </template>
     </BaseListToolbar>
 
@@ -173,10 +145,6 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
         </span>
       </template>
 
-      <!--
-        Qué acciones cayeron en esta categoría. Es la comprobación de que lo que
-        se elige al dar de alta una acción se ve luego desde el otro lado.
-      -->
       <template #actions-cell="{ row }">
         <UTooltip
           v-if="row.original.actions?.length"
@@ -201,39 +169,25 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
 
       <template #row-actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
-          <UTooltip text="Editar categoría">
+          <UTooltip text="Recuperar">
             <UButton
-              :to="`/roles/categorias/${row.original.id}`"
-              icon="i-lucide-square-pen"
+              icon="i-lucide-archive-restore"
               v-bind="rowAction"
-              aria-label="Editar categoría"
+              :loading="restoring"
+              aria-label="Recuperar categoría"
+              @click="restoreOne(row.original)"
             />
           </UTooltip>
-
-          <BaseConfirmPopover
-            title="¿Eliminar esta categoría?"
-            :description="`Las acciones de «${row.original.name}» no se borran: pasan al bloque «Otras acciones» hasta que se les asigne otra.`"
-            :loading="removing"
-            @confirm="removeOne(row.original)"
-          >
-            <UButton
-              icon="i-lucide-trash-2"
-              v-bind="rowAction"
-              color="error"
-              aria-label="Eliminar categoría"
-            />
-          </BaseConfirmPopover>
         </div>
       </template>
 
       <template #empty>
         <UEmpty
-          :icon="isFiltered ? 'i-lucide-search-x' : 'i-lucide-shapes'"
-          :title="isFiltered ? 'Sin resultados' : 'No hay categorías'"
+          :icon="isFiltered ? 'i-lucide-search-x' : 'i-lucide-trash-2'"
+          :title="isFiltered ? 'Sin resultados' : 'La papelera está vacía'"
           :description="isFiltered
             ? 'Prueba con otro nombre o descripción.'
-            : 'Crea la primera categoría para poder agrupar las acciones por lo que hacen.'"
-          :actions="isFiltered ? [] : [addCategory]"
+            : 'Las categorías que elimines aparecerán aquí.'"
           variant="naked"
         />
       </template>

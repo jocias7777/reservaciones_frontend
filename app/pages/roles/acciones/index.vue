@@ -17,6 +17,10 @@ useSeoMeta({ title: 'Acciones' })
  */
 const actionsApi = useActionsApi()
 const modulesApi = useModulesApi()
+const access = useAccessControl()
+
+/** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
+const canRestore = computed(() => access.canRestoreAny('actions'))
 
 /**
  * En qué módulos comprueba el backend cada acción.
@@ -116,6 +120,15 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
       :loading="pending"
     >
       <template #actions>
+        <UButton
+          v-if="canRestore"
+          label="Papelera"
+          icon="i-lucide-archive"
+          color="neutral"
+          variant="outline"
+          to="/roles/acciones/papelera"
+        />
+
         <BaseConfirmPopover
           v-if="selectedIds.length"
           title="¿Eliminar las acciones seleccionadas?"

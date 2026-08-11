@@ -45,7 +45,7 @@ function onSubmit(payload: CreateActionCategoryPayload) {
   >
     <template #actions>
       <UButton
-        label="Volver a categorías"
+        label="Volver"
         icon="i-lucide-arrow-left"
         color="neutral"
         variant="ghost"

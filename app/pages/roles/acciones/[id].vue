@@ -55,7 +55,7 @@ function onSubmit(payload: CreateActionPayload) {
   >
     <template #actions>
       <UButton
-        label="Volver a acciones"
+        label="Volver"
         icon="i-lucide-arrow-left"
         color="neutral"
         variant="ghost"

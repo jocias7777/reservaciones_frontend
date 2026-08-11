@@ -6,27 +6,16 @@ definePageMeta({
   layout: 'app'
 })
 
-useSeoMeta({ title: 'Roles' })
+useSeoMeta({ title: 'Papelera de roles' })
 
 const rolesApi = useRolesApi()
-const access = useAccessControl()
 
-/** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
-const canRestore = computed(() => access.canRestoreAny('roles'))
-
-/** Botones de acción de cada fila: iconos algo menores que los del resto. */
+/** Botón de restaurar de cada fila: mismo tamaño de icono que el resto de la app. */
 const rowAction = {
-  color: 'neutral',
+  color: 'success',
   variant: 'ghost',
   ui: { leadingIcon: 'size-5' }
 } satisfies ButtonProps
-
-/** Acción principal de la pantalla: la misma en la cabecera y en el estado vacío. */
-const addRole: ButtonProps = {
-  label: 'Agregar rol',
-  icon: 'i-lucide-shield-plus',
-  to: '/roles/nuevo'
-}
 
 const {
   items,
@@ -39,8 +28,8 @@ const {
   error,
   refresh
 } = useResourceList<RoleWithRelations>({
-  key: 'roles:list',
-  fetcher: query => rolesApi.query(query),
+  key: 'roles:trash',
+  fetcher: query => rolesApi.trash(query),
   searchFields: ['name', 'description'],
   expand: ['users'],
   sortBy: 'name',
@@ -55,29 +44,35 @@ const columns: TableColumn<RoleWithRelations>[] = [
   { id: 'actions' }
 ]
 
-const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useResourceRemoval<RoleWithRelations>({
-  remove: role => rolesApi.remove(role.id),
-  bulkRemove: ids => rolesApi.bulkRemove(ids),
+const { rowSelection, selectedIds, restoring, restoreOne, restoreSelected } = useResourceRestore<RoleWithRelations>({
+  restore: role => rolesApi.restore(role.id),
+  bulkRestore: ids => rolesApi.bulkRestore(ids),
   refresh,
-  successOne: role => ['Rol eliminado', `«${role.name}» pasó a la papelera.`],
-  successMany: count => ['Roles eliminados', `${count} rol(es) pasaron a la papelera.`]
+  successOne: role => ['Rol restaurado', `«${role.name}» volvió a estar disponible.`],
+  successMany: count => ['Roles restaurados', `${count} rol(es) volvieron a estar disponibles.`]
 })
 </script>
 
 <template>
   <UContainer class="py-6 space-y-4">
     <BasePageHeader
-      title="Roles"
-      description="Cada rol define qué puede hacer un usuario."
+      title="Papelera de roles"
+      description="Roles eliminados: se pueden recuperar mientras sigan aquí."
     >
       <template #actions>
-        <UButton v-bind="addRole" />
+        <UButton
+          label="Volver"
+          icon="i-lucide-arrow-left"
+          color="neutral"
+          variant="outline"
+          to="/roles"
+        />
       </template>
     </BasePageHeader>
 
     <BaseErrorAlert
       :error="error"
-      title="No se pudieron cargar los roles"
+      title="No se pudo cargar la papelera"
       @retry="refresh"
     />
 
@@ -88,28 +83,14 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
     >
       <template #actions>
         <UButton
-          v-if="canRestore"
-          label="Papelera"
-          icon="i-lucide-archive"
-          color="neutral"
-          variant="outline"
-          to="/roles/papelera"
-        />
-
-        <BaseConfirmPopover
           v-if="selectedIds.length"
-          title="¿Eliminar los roles seleccionados?"
-          :description="`Se enviarán ${selectedIds.length} rol(es) a la papelera. Los usuarios que los tuvieran asignados se quedan sin rol.`"
-          :loading="removing"
-          @confirm="removeSelected"
-        >
-          <UButton
-            :label="`Eliminar (${selectedIds.length})`"
-            icon="i-lucide-trash-2"
-            color="error"
-            variant="subtle"
-          />
-        </BaseConfirmPopover>
+          :label="`Recuperar (${selectedIds.length})`"
+          icon="i-lucide-archive-restore"
+          color="success"
+          variant="subtle"
+          :loading="restoring"
+          @click="restoreSelected"
+        />
       </template>
     </BaseListToolbar>
 
@@ -169,39 +150,25 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
 
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
-          <UTooltip text="Editar datos del rol">
+          <UTooltip text="Recuperar">
             <UButton
-              :to="`/roles/${row.original.id}`"
-              icon="i-lucide-square-pen"
+              icon="i-lucide-archive-restore"
               v-bind="rowAction"
-              aria-label="Editar rol"
+              :loading="restoring"
+              aria-label="Recuperar rol"
+              @click="restoreOne(row.original)"
             />
           </UTooltip>
-
-          <BaseConfirmPopover
-            title="¿Eliminar este rol?"
-            :description="`«${row.original.name}» dejará de estar disponible y sus usuarios se quedarán sin rol.`"
-            :loading="removing"
-            @confirm="removeOne(row.original)"
-          >
-            <UButton
-              icon="i-lucide-trash-2"
-              v-bind="rowAction"
-              color="error"
-              aria-label="Eliminar rol"
-            />
-          </BaseConfirmPopover>
         </div>
       </template>
 
       <template #empty>
         <UEmpty
-          :icon="isFiltered ? 'i-lucide-search-x' : 'i-lucide-shield'"
-          :title="isFiltered ? 'Sin resultados' : 'Todavía no hay roles'"
+          :icon="isFiltered ? 'i-lucide-search-x' : 'i-lucide-trash-2'"
+          :title="isFiltered ? 'Sin resultados' : 'La papelera está vacía'"
           :description="isFiltered
             ? 'Prueba con otro nombre o descripción.'
-            : 'Crea un rol y asígnale permisos por módulo.'"
-          :actions="isFiltered ? [] : [addRole]"
+            : 'Los roles que elimines aparecerán aquí.'"
           variant="naked"
         />
       </template>

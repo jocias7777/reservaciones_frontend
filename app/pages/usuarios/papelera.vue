@@ -1,40 +1,21 @@
 <script setup lang="ts">
 import type { ButtonProps, TableColumn } from '@nuxt/ui'
-import type { Filters, UserWithRelations } from '~/types'
+import type { UserWithRelations } from '~/types'
 
 definePageMeta({
   layout: 'app'
 })
 
-useSeoMeta({ title: 'Usuarios' })
+useSeoMeta({ title: 'Papelera de usuarios' })
 
 const usersApi = useUsersApi()
-const access = useAccessControl()
 
-/** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
-const canRestore = computed(() => access.canRestoreAny('users'))
-
-/** Botones de acción de cada fila: iconos algo menores que los del resto. */
+/** Botón de restaurar de cada fila: mismo tamaño de icono que el resto de la app. */
 const rowAction = {
-  color: 'neutral',
+  color: 'success',
   variant: 'ghost',
   ui: { leadingIcon: 'size-5' }
 } satisfies ButtonProps
-
-/** Acción principal de la pantalla: la misma en la cabecera y en el estado vacío. */
-const addUser: ButtonProps = {
-  label: 'Agregar usuario',
-  icon: 'i-lucide-user-round-plus',
-  to: '/usuarios/nuevo'
-}
-
-/** Filtro por estado de la cuenta (`is_active` está en la whitelist del backend). */
-const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
-
-const filters = computed<Filters | undefined>(() => {
-  if (statusFilter.value === 'all') return undefined
-  return { is_active: statusFilter.value === 'active' }
-})
 
 const {
   items,
@@ -47,11 +28,10 @@ const {
   error,
   refresh
 } = useResourceList<UserWithRelations>({
-  key: 'users:list',
-  fetcher: query => usersApi.query(query),
+  key: 'users:trash',
+  fetcher: query => usersApi.trash(query),
   searchFields: ['email', 'username'],
   expand: ['role', 'profile'],
-  filters,
   sortBy: 'created_at',
   sortOrder: 'DESC'
 })
@@ -65,30 +45,35 @@ const columns: TableColumn<UserWithRelations>[] = [
   { id: 'actions' }
 ]
 
-/** Con `getRowId` las claves de la selección son los ids reales, no el índice. */
-const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useResourceRemoval<UserWithRelations>({
-  remove: user => usersApi.remove(user.id),
-  bulkRemove: ids => usersApi.bulkRemove(ids),
+const { rowSelection, selectedIds, restoring, restoreOne, restoreSelected } = useResourceRestore<UserWithRelations>({
+  restore: user => usersApi.restore(user.id),
+  bulkRestore: ids => usersApi.bulkRestore(ids),
   refresh,
-  successOne: user => ['Usuario eliminado', `${user.email} pasó a la papelera.`],
-  successMany: count => ['Usuarios eliminados', `${count} cuenta(s) pasaron a la papelera.`]
+  successOne: user => ['Usuario restaurado', `${user.email} volvió al listado de usuarios.`],
+  successMany: count => ['Usuarios restaurados', `${count} cuenta(s) volvieron al listado de usuarios.`]
 })
 </script>
 
 <template>
   <UContainer class="py-6 space-y-4">
     <BasePageHeader
-      title="Usuarios"
-      description="Cuentas con acceso al sistema."
+      title="Papelera de usuarios"
+      description="Cuentas eliminadas: se pueden recuperar mientras sigan aquí."
     >
       <template #actions>
-        <UButton v-bind="addUser" />
+        <UButton
+          label="Volver"
+          icon="i-lucide-arrow-left"
+          color="neutral"
+          variant="outline"
+          to="/usuarios"
+        />
       </template>
     </BasePageHeader>
 
     <BaseErrorAlert
       :error="error"
-      title="No se pudieron cargar los usuarios"
+      title="No se pudo cargar la papelera"
       @retry="refresh"
     />
 
@@ -99,40 +84,14 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
     >
       <template #actions>
         <UButton
-          v-if="canRestore"
-          label="Papelera"
-          icon="i-lucide-archive"
-          color="neutral"
-          variant="outline"
-          to="/usuarios/papelera"
-        />
-
-        <USelect
-          v-model="statusFilter"
-          :items="[
-            { label: 'Todos los estados', value: 'all' },
-            { label: 'Solo activos', value: 'active' },
-            { label: 'Solo inactivos', value: 'inactive' }
-          ]"
-          value-key="value"
-          icon="i-lucide-filter"
-          class="w-full sm:w-44"
-        />
-
-        <BaseConfirmPopover
           v-if="selectedIds.length"
-          title="¿Eliminar las cuentas seleccionadas?"
-          :description="`Se enviarán ${selectedIds.length} usuario(s) a la papelera.`"
-          :loading="removing"
-          @confirm="removeSelected"
-        >
-          <UButton
-            :label="`Eliminar (${selectedIds.length})`"
-            icon="i-lucide-trash-2"
-            color="error"
-            variant="subtle"
-          />
-        </BaseConfirmPopover>
+          :label="`Recuperar (${selectedIds.length})`"
+          icon="i-lucide-archive-restore"
+          color="success"
+          variant="subtle"
+          :loading="restoring"
+          @click="restoreSelected"
+        />
       </template>
     </BaseListToolbar>
 
@@ -206,39 +165,25 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
 
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
-          <UTooltip text="Editar">
+          <UTooltip text="Recuperar">
             <UButton
-              :to="`/usuarios/${row.original.id}`"
-              icon="i-lucide-square-pen"
+              icon="i-lucide-archive-restore"
               v-bind="rowAction"
-              aria-label="Editar usuario"
+              :loading="restoring"
+              aria-label="Recuperar usuario"
+              @click="restoreOne(row.original)"
             />
           </UTooltip>
-
-          <BaseConfirmPopover
-            title="¿Eliminar esta cuenta?"
-            :description="`${row.original.email} dejará de poder iniciar sesión.`"
-            :loading="removing"
-            @confirm="removeOne(row.original)"
-          >
-            <UButton
-              icon="i-lucide-trash-2"
-              v-bind="rowAction"
-              color="error"
-              aria-label="Eliminar usuario"
-            />
-          </BaseConfirmPopover>
         </div>
       </template>
 
       <template #empty>
         <UEmpty
-          :icon="isFiltered ? 'i-lucide-search-x' : 'i-lucide-users'"
-          :title="isFiltered ? 'Sin resultados' : 'Todavía no hay usuarios'"
+          :icon="isFiltered ? 'i-lucide-search-x' : 'i-lucide-trash-2'"
+          :title="isFiltered ? 'Sin resultados' : 'La papelera está vacía'"
           :description="isFiltered
             ? 'Prueba con otro correo o nombre de usuario.'
-            : 'Crea la primera cuenta para empezar a dar acceso al sistema.'"
-          :actions="isFiltered ? [] : [addUser]"
+            : 'Los usuarios que elimines aparecerán aquí.'"
           variant="naked"
         />
       </template>

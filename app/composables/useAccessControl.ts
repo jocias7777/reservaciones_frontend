@@ -15,6 +15,15 @@ import type { ApiClient } from '~/plugins/api'
  *    403. Sale más caro —una petición por módulo— y solo averigua quién puede
  *    listar, que es lo que hace falta para decidir si se entra a una pantalla.
  *
+ *    `restore` y `bulk_restore` se prueban también, aparte, para los módulos
+ *    con papelera: no hay un `GET` barato para eso, así que se manda el `POST`
+ *    real contra un id que no puede existir (ver `probeRestore` y
+ *    `probeBulkRestore`). Ninguno de los desenlaces posibles —403 sin permiso,
+ *    404 "no encontrado" con permiso— toca una fila de la base, así que sigue
+ *    siendo una prueba y no una restauración de verdad. Son dos permisos
+ *    aparte en el backend (uno por fila, otro por lote), así que se prueban
+ *    los dos: la papelera es útil con cualquiera de los dos.
+ *
  * Las dos vías miden lo mismo: el resultado de `require_permission`, con lo que
  * da el rol, las excepciones de ese usuario y el bypass del superadmin ya
  * aplicados. Calcularlo por nuestra cuenta seria reimplementar esas tres reglas
@@ -23,13 +32,25 @@ import type { ApiClient } from '~/plugins/api'
  * Esto NO es la barrera de seguridad: la barrera es el backend, que vuelve a
  * comprobarlo en cada petición. Aquí solo se evita ofrecer y abrir pantallas que
  * van a responder 403 en cuanto pidan sus datos.
+ *
+ * La decisión de qué se puede hacer con ese estado —`can`, `canVisit`,
+ * `canRestoreAny`— es pura y vive en `app/utils/access.ts` (`resolveCan` y
+ * compañía); este composable solo junta el estado reactivo y las llamadas de
+ * red. Así la decisión se puede probar sin Nuxt de por medio.
  */
 
 /** Lo publica el backend como `{ "users": ["read", "list"], ... }`. */
 const PERMISSIONS_ENDPOINT = '/auth/me/permissions'
 
-/** De dónde salieron los permisos que hay en memoria. */
-export type AccessSource = 'declared' | 'probed'
+/**
+ * Id con el que se prueba `restore`/`bulk_restore` sin restaurar nada.
+ *
+ * No existe fila con este id —ningún generador de ids reales va a producirlo—,
+ * así que tanto `POST .../<id>/restore` como `POST .../bulk/restore` con este
+ * id en la lista siempre llegan vacíos al repositorio. Lo único que decide la
+ * respuesta es el permiso.
+ */
+const PROBE_RESTORE_ID = '00000000-0000-0000-0000-000000000000'
 
 export function useAccessControl() {
   const api = useApi()
@@ -146,15 +167,60 @@ export function useAccessControl() {
     }
   }
 
-  /** Vía 2: se deduce módulo por módulo. */
-  async function probeAll(): Promise<Record<string, boolean>> {
-    const results = await Promise.all(
-      GUARDED_MODULES.map(async module => [module, await probe(module)] as const)
-    )
+  /**
+   * ¿Puede restaurar en este módulo?
+   *
+   * Igual que `probe`, pero contra `POST .../<id>/restore` con
+   * `PROBE_RESTORE_ID` en vez de `QUERY`: es el único verbo que existe para
+   * `restore`, no hay un `GET` equivalente que probar. Sin permiso, el
+   * decorador del backend corta con 403 antes de llegar al repositorio; con
+   * permiso, llega y responde 404 porque el id no es de nadie. Ninguno de los
+   * dos casos escribe nada.
+   */
+  async function probeRestore(module: string): Promise<boolean> {
+    const endpoint = MODULE_ENDPOINTS[module]
+    if (!endpoint) return true
 
-    return Object.fromEntries(
-      results.map(([module, allowed]) => [accessKey(module, 'list'), allowed])
-    )
+    try {
+      await request(`${endpoint}/${PROBE_RESTORE_ID}/restore`, { method: 'POST' })
+      return true
+    } catch (error) {
+      return apiErrorStatus(error) !== 403
+    }
+  }
+
+  /**
+   * ¿Puede restaurar en lote en este módulo?
+   *
+   * Es un permiso aparte de `restore` en el backend (`require_permission(modulo,
+   * 'bulk_restore')`), así que se prueba aparte: alguien puede tener uno sin el
+   * otro. Mismo truco que `probeRestore`, contra `POST .../bulk/restore` con
+   * `PROBE_RESTORE_ID` como único id de la lista.
+   */
+  async function probeBulkRestore(module: string): Promise<boolean> {
+    const endpoint = MODULE_ENDPOINTS[module]
+    if (!endpoint) return true
+
+    try {
+      await request(`${endpoint}/bulk/restore`, { method: 'POST', body: { ids: [PROBE_RESTORE_ID] } })
+      return true
+    } catch (error) {
+      return apiErrorStatus(error) !== 403
+    }
+  }
+
+  /**
+   * Vía 2: se deduce módulo por módulo (y, en los que tienen papelera, también
+   * `restore` y `bulk_restore`).
+   */
+  async function probeAll(): Promise<Record<string, boolean>> {
+    const [listResults, restoreResults, bulkRestoreResults] = await Promise.all([
+      Promise.all(GUARDED_MODULES.map(async module => [accessKey(module, 'list'), await probe(module)] as const)),
+      Promise.all(RESTORABLE_MODULES.map(async module => [accessKey(module, 'restore'), await probeRestore(module)] as const)),
+      Promise.all(RESTORABLE_MODULES.map(async module => [accessKey(module, 'bulk_restore'), await probeBulkRestore(module)] as const))
+    ])
+
+    return Object.fromEntries([...listResults, ...restoreResults, ...bulkRestoreResults])
   }
 
   async function resolve() {
@@ -187,27 +253,23 @@ export function useAccessControl() {
   }
 
   /**
-   * Si el usuario puede hacer algo.
-   *
-   * Cuando los permisos los publica el backend se sabe de todas las acciones, y
-   * lo que no aparece es que no lo tiene. Deduciéndolos solo se averigua quién
-   * puede listar: del resto no se sabe nada, así que se concede y el backend
-   * responderá 403 si no tocaba. Antes de haber preguntado se concede también,
-   * para que el menú no parpadee escondiendo apartados que sí se tienen.
+   * La decisión en sí —`resolveCan` / `resolveCanVisit` / `resolveCanRestoreAny`—
+   * vive en `app/utils/access.ts` como funciones puras, para poder probarla con
+   * un test normal y corriente en vez de tener que montar toda la aplicación.
+   * Aquí solo se les pasa el estado reactivo ya resuelto.
    */
+  const state = computed<AccessState>(() => ({ granted: granted.value, loaded: loaded.value, source: source.value }))
+
   function can(module: string, action = 'list'): boolean {
-    if (!loaded.value) return true
-
-    const key = accessKey(module, action)
-    if (key in granted.value) return granted.value[key]!
-
-    return source.value !== 'declared'
+    return resolveCan(state.value, module, action)
   }
 
-  /** Si se puede abrir una ruta concreta. */
   function canVisit(path: string): boolean {
-    const required = accessForRoute(path)
-    return required ? can(required.module, required.action) : true
+    return resolveCanVisit(state.value, path)
+  }
+
+  function canRestoreAny(module: string): boolean {
+    return resolveCanRestoreAny(state.value, module)
   }
 
   /** La primera pantalla que sí puede abrir, para no mandarlo a un muro. */
@@ -220,5 +282,5 @@ export function useAccessControl() {
     loaded.value = false
   }
 
-  return { granted, loaded, source, ensureLoaded, can, canVisit, firstAllowedRoute, reset }
+  return { granted, loaded, source, ensureLoaded, can, canVisit, canRestoreAny, firstAllowedRoute, reset }
 }
