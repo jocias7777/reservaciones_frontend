@@ -18,16 +18,9 @@ useSeoMeta({ title: 'Categorías de acciones' })
  * orden en el que se mostrará.
  */
 const categoriesApi = useActionCategoriesApi()
-const access = useAccessControl()
 
-/** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
-const canRestore = computed(() => access.canRestoreAny('action_categories'))
-
-/** Agregar, editar y eliminar (uno o en lote) son permisos aparte: cada botón se ofrece por su cuenta. */
-const canCreate = computed(() => access.can('action_categories', 'create'))
-const canUpdate = computed(() => access.can('action_categories', 'update'))
-const canDelete = computed(() => access.can('action_categories', 'delete'))
-const canBulkDelete = computed(() => access.can('action_categories', 'bulk_delete'))
+/** Un indicador por permiso: agregar, editar, eliminar (uno o en lote) y papelera. */
+const { canCreate, canUpdate, canDelete, canBulkDelete, canRestore } = useModuleAccess('action_categories')
 
 /** Botones de acción de cada fila: iconos algo menores que los del resto. */
 const rowAction = {

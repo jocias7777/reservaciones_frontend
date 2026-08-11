@@ -76,30 +76,42 @@ export const LANDING_ROUTES = [
 /** Los módulos que hay que consultar para saber qué puede ver alguien. */
 export const GUARDED_MODULES = [...new Set(ROUTE_ACCESS.map(entry => entry.module))]
 
+/** Si una entrada de `ROUTE_ACCESS` pide esta acción (sola o dentro de su lista). */
+function routeRequires(entry: RouteAccess, action: string): boolean {
+  return Array.isArray(entry.action) ? entry.action.includes(action) : entry.action === action
+}
+
+/** Los módulos de las entradas de `ROUTE_ACCESS` que pidan `action`, sin repetidos. */
+function modulesRequiring(action: string): string[] {
+  return [...new Set(ROUTE_ACCESS.filter(entry => routeRequires(entry, action)).map(entry => entry.module))]
+}
+
 /**
  * Módulos con papelera en la interfaz: los únicos donde hace falta saber si
  * se puede `restore`/`bulk_restore`, además de `list`.
  *
  * Sale de `ROUTE_ACCESS` en vez de escribirse aparte: son exactamente los
- * módulos que ya declaran una ruta de papelera ahí arriba (la lista de
- * acciones es la marca de que lo es), así que mantener una segunda lista a
- * mano solo daría pie a que se desincronizaran.
+ * módulos que ya declaran una ruta de papelera ahí arriba, así que mantener
+ * una segunda lista a mano solo daría pie a que se desincronizaran. Si el día
+ * de mañana se agrega la papelera a un módulo nuevo, basta con darle su fila
+ * en `ROUTE_ACCESS` (como las demás) para que quede cubierto aquí también, sin
+ * tocar nada más.
  */
-export const RESTORABLE_MODULES = [...new Set(
-  ROUTE_ACCESS.filter(entry => Array.isArray(entry.action)).map(entry => entry.module)
-)]
+export const RESTORABLE_MODULES = modulesRequiring('restore')
 
 /**
  * Módulos con un listado y un formulario completos en la interfaz: los únicos
  * donde hace falta saber si se puede `create`/`update`/`delete`/`bulk_delete`,
  * además de `list`.
  *
- * A diferencia de `RESTORABLE_MODULES`, esta no sale de `ROUTE_ACCESS`: crear,
- * editar y eliminar son botones dentro de la propia pantalla del listado, no
- * rutas aparte, así que no hay de dónde derivarlos solos. Si se agrega un
- * quinto listado con estos botones, hay que acordarse de sumarlo aquí.
+ * También sale de `ROUTE_ACCESS`, y no se escribe aparte por la misma razón
+ * que `RESTORABLE_MODULES`: se apoya en que todo listado con estos botones
+ * también tiene su formulario de alta (`/módulo/nuevo`, con acción `create`) —
+ * y esa ruta hay que declararla igual para que el propio formulario quede
+ * protegido. Un módulo nuevo con estos botones queda cubierto en cuanto se le
+ * da esa fila, sin tocar esta constante.
  */
-export const MANAGED_MODULES = ['users', 'roles', 'actions', 'action_categories']
+export const MANAGED_MODULES = modulesRequiring('create')
 
 /**
  * Endpoint de cada módulo. El `code` del módulo y su ruta no siempre coinciden:

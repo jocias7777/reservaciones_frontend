@@ -4,6 +4,7 @@ import {
   GUARDED_MODULES,
   MANAGED_MODULES,
   RESTORABLE_MODULES,
+  ROUTE_ACCESS,
   accessForRoute,
   resolveCan,
   resolveCanRestoreAny,
@@ -154,8 +155,29 @@ describe('accessForRoute — especificidad de prefijos', () => {
 })
 
 describe('módulos con listado y formulario completos', () => {
-  it('MANAGED_MODULES son justo los 4 listados con Agregar/Editar/Eliminar', () => {
+  it('MANAGED_MODULES sale de ROUTE_ACCESS (quién declara una ruta de alta con "create"), no de una lista aparte', () => {
     expect([...MANAGED_MODULES].sort()).toEqual(['action_categories', 'actions', 'roles', 'users'])
+  })
+
+  it('todo módulo gestionado también está entre los módulos con listado guardado', () => {
+    for (const module of MANAGED_MODULES) {
+      expect(GUARDED_MODULES).toContain(module)
+    }
+  })
+
+  it('un módulo nuevo con su ruta de alta en ROUTE_ACCESS entraría solo, sin tocar MANAGED_MODULES a mano', () => {
+    // No se puede mutar ROUTE_ACCESS desde aquí (es la tabla real de la app),
+    // así que esto documenta el contrato en vez de ejecutarlo: MANAGED_MODULES
+    // es `modulesRequiring('create')` sobre ROUTE_ACCESS, no una lista escrita
+    // a mano. Que un módulo entre aquí depende únicamente de que declare esa
+    // fila, igual que ya pasa con RESTORABLE_MODULES y "restore".
+    const modulosConCrear = new Set(
+      ROUTE_ACCESS
+        .filter(entry => entry.action === 'create' || (Array.isArray(entry.action) && entry.action.includes('create')))
+        .map(entry => entry.module)
+    )
+
+    expect(new Set(MANAGED_MODULES)).toEqual(modulosConCrear)
   })
 })
 

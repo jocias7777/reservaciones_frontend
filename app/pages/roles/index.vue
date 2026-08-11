@@ -9,16 +9,9 @@ definePageMeta({
 useSeoMeta({ title: 'Roles' })
 
 const rolesApi = useRolesApi()
-const access = useAccessControl()
 
-/** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
-const canRestore = computed(() => access.canRestoreAny('roles'))
-
-/** Agregar, editar y eliminar (uno o en lote) son permisos aparte: cada botón se ofrece por su cuenta. */
-const canCreate = computed(() => access.can('roles', 'create'))
-const canUpdate = computed(() => access.can('roles', 'update'))
-const canDelete = computed(() => access.can('roles', 'delete'))
-const canBulkDelete = computed(() => access.can('roles', 'bulk_delete'))
+/** Un indicador por permiso: agregar, editar, eliminar (uno o en lote) y papelera. */
+const { canCreate, canUpdate, canDelete, canBulkDelete, canRestore } = useModuleAccess('roles')
 
 /** Botones de acción de cada fila: iconos algo menores que los del resto. */
 const rowAction = {

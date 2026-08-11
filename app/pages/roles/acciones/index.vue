@@ -17,16 +17,9 @@ useSeoMeta({ title: 'Acciones' })
  */
 const actionsApi = useActionsApi()
 const modulesApi = useModulesApi()
-const access = useAccessControl()
 
-/** La papelera solo se ofrece si el rol (o una excepción suya) tiene `restore` o `bulk_restore`. */
-const canRestore = computed(() => access.canRestoreAny('actions'))
-
-/** Agregar, editar y eliminar (uno o en lote) son permisos aparte: cada botón se ofrece por su cuenta. */
-const canCreate = computed(() => access.can('actions', 'create'))
-const canUpdate = computed(() => access.can('actions', 'update'))
-const canDelete = computed(() => access.can('actions', 'delete'))
-const canBulkDelete = computed(() => access.can('actions', 'bulk_delete'))
+/** Un indicador por permiso: agregar, editar, eliminar (uno o en lote) y papelera. */
+const { canCreate, canUpdate, canDelete, canBulkDelete, canRestore } = useModuleAccess('actions')
 
 /**
  * En qué módulos comprueba el backend cada acción.
