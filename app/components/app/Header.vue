@@ -35,6 +35,16 @@ defineShortcuts({
     />
 
     <template #right>
+      <UTooltip text="Cómo funciona">
+        <UButton
+          icon="i-lucide-book-open"
+          color="neutral"
+          variant="ghost"
+          aria-label="Cómo funciona"
+          to="/ayuda"
+        />
+      </UTooltip>
+
       <UTooltip
         text="Buscar"
         :kbds="['meta', 'K']"

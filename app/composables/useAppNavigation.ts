@@ -1,8 +1,7 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 /**
- * Navegación del header: el apartado "Seguridad" con sus pantallas dentro, y
- * al lado "Cómo funciona", suelto y sin permiso de por medio.
+ * Navegación del header: el apartado "Seguridad" con sus pantallas dentro.
  *
  * El apartado se arma con `children` de `UNavigationMenu`, que en horizontal
  * despliega el submenú y añade la flecha hacia abajo por su cuenta.
@@ -27,7 +26,6 @@ export function useAppNavigation() {
   const isUsuarios = computed(() =>
     route.path.startsWith('/usuarios') && !isPermisosUsuario.value
   )
-  const isAyuda = computed(() => route.path.startsWith('/ayuda'))
 
   /**
    * Solo se ofrece lo que se puede abrir.
@@ -105,16 +103,6 @@ export function useAppNavigation() {
         children
       })
     }
-
-    // Aparte del apartado de arriba y no dentro: no es una pantalla de datos,
-    // es la explicación de cómo funcionan las demás. No exige ningún permiso
-    // —cualquier cuenta con sesión puede leerla—, así que no pasa por `visible`.
-    groups.push({
-      label: 'Cómo funciona',
-      icon: 'i-lucide-compass',
-      to: '/ayuda',
-      active: isAyuda.value
-    })
 
     return groups
   })
