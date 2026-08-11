@@ -70,8 +70,8 @@ onMounted(() => window.scrollTo({ top: 0 }))
             color="primary"
             highlight
             :ui="{
-              link: 'text-[15px]',
-              label: 'text-[15px] font-bold text-primary mt-6 first:mt-0'
+              link: 'text-[15px] ps-5',
+              label: 'text-[15px] font-semibold text-highlighted mt-6 first:mt-0'
             }"
           />
         </UPageAside>
