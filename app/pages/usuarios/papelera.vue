@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ButtonProps, TableColumn } from '@nuxt/ui'
+import type { TableColumn } from '@nuxt/ui'
 import type { UserWithRelations } from '~/types'
 
 definePageMeta({
@@ -13,12 +13,7 @@ const usersApi = useUsersApi()
 /** `restore` (fila) y `bulk_restore` (lote) son permisos aparte: cada botón exige el suyo. */
 const { canRestoreOne, canRestoreMany } = useModuleAccess('users')
 
-/** Botón de restaurar de cada fila: mismo tamaño de icono que el resto de la app. */
-const rowAction = {
-  color: 'success',
-  variant: 'ghost',
-  ui: { leadingIcon: 'size-5' }
-} satisfies ButtonProps
+const rowAction = rowActionProps('success')
 
 const {
   items,

@@ -13,12 +13,7 @@ const rolesApi = useRolesApi()
 /** Un indicador por permiso: agregar, editar, eliminar (uno o en lote) y papelera. */
 const { canCreate, canUpdate, canDelete, canBulkDelete, canRestore } = useModuleAccess('roles')
 
-/** Botones de acción de cada fila: iconos algo menores que los del resto. */
-const rowAction = {
-  color: 'neutral',
-  variant: 'ghost',
-  ui: { leadingIcon: 'size-5' }
-} satisfies ButtonProps
+const rowAction = rowActionProps()
 
 /** Acción principal de la pantalla: la misma en la cabecera y en el estado vacío. */
 const addRole: ButtonProps = {

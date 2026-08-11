@@ -45,12 +45,7 @@ function modulesUsing(code: string): string[] {
     .map(([moduleCode]) => moduleCode)
 }
 
-/** Botones de acción de cada fila: iconos algo menores que los del resto. */
-const rowAction = {
-  color: 'neutral',
-  variant: 'ghost',
-  ui: { leadingIcon: 'size-5' }
-} satisfies ButtonProps
+const rowAction = rowActionProps()
 
 /** Acción principal de la pantalla: la misma en la cabecera y en el estado vacío. */
 const addAction: ButtonProps = {
