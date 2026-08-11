@@ -24,6 +24,11 @@ import type { ApiClient } from '~/plugins/api'
  *    validaciones de alta del backend (usuario, rol, acción, categoría) antes
  *    de escribir nada, que un cuerpo vacío nunca pasa a crear un registro real.
  *
+ *    `assign` (matrices de permisos por rol y por usuario) sí tiene un `GET`
+ *    barato de verdad —`GET .../by-role/:id` y `GET .../by-user/:id`—, así que
+ *    se prueba con una lectura normal contra `PROBE_ID`, sin necesidad del
+ *    truco del cuerpo vacío.
+ *
  * Las dos vías miden lo mismo: el resultado de `require_permission`, con lo que
  * da el rol, las excepciones de ese usuario y el bypass del superadmin ya
  * aplicados. Calcularlo por nuestra cuenta seria reimplementar esas tres reglas
@@ -254,6 +259,28 @@ export function useAccessControl() {
   )
 
   /**
+   * ¿Puede administrar la matriz de permisos de este módulo?
+   *
+   * Solo existe para `role_permissions` (`GET .../by-role/:id`) y
+   * `user_permissions` (`GET .../by-user/:id`); el segmento de la URL cambia
+   * según cuál sea, de ahí el mapa. Como es un `GET` normal, ni siquiera hace
+   * falta el truco del cuerpo vacío de `probeCreate`/`probeUpdate`: sin
+   * permiso, 403; con permiso, 404 porque `PROBE_ID` no es de nadie. Ninguno
+   * de los dos casos lee ni escribe una fila real.
+   */
+  const ASSIGN_PATH_SEGMENT: Record<string, string> = {
+    role_permissions: 'by-role',
+    user_permissions: 'by-user'
+  }
+
+  const probeAssign = (module: string) => {
+    const segment = ASSIGN_PATH_SEGMENT[module]
+    if (!segment) return Promise.resolve(true)
+
+    return probeModuleAction(module, endpoint => request(`${endpoint}/${segment}/${PROBE_ID}`, { method: 'GET' }))
+  }
+
+  /**
    * Junta en un solo mapa el resultado de probar una acción en una lista de
    * módulos. Lo usa `probeAll` una vez por acción, en vez de repetir el mismo
    * `Promise.all` + `accessKey` para cada una.
@@ -268,8 +295,9 @@ export function useAccessControl() {
 
   /**
    * Vía 2: se deduce módulo por módulo. `list` en todos los módulos guardados;
-   * `restore`/`bulk_restore` y `create`/`update`/`delete`/`bulk_delete` solo en
-   * los que tienen papelera y formulario de alta, respectivamente.
+   * `restore`/`bulk_restore`, `create`/`update`/`delete`/`bulk_delete` y
+   * `assign` solo en los que tienen papelera, formulario de alta y matriz de
+   * permisos, respectivamente.
    */
   async function probeAll(): Promise<Record<string, boolean>> {
     const results = await Promise.all([
@@ -279,7 +307,8 @@ export function useAccessControl() {
       probeAction(MANAGED_MODULES, 'create', probeCreate),
       probeAction(MANAGED_MODULES, 'update', probeUpdate),
       probeAction(MANAGED_MODULES, 'delete', probeDelete),
-      probeAction(MANAGED_MODULES, 'bulk_delete', probeBulkDelete)
+      probeAction(MANAGED_MODULES, 'bulk_delete', probeBulkDelete),
+      probeAction(ASSIGNABLE_MODULES, 'assign', probeAssign)
     ])
 
     return Object.fromEntries(results.flat())

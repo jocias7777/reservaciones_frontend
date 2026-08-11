@@ -296,7 +296,7 @@ async function save() {
         variant="subtle"
         icon="i-lucide-lock"
         title="Tu cuenta no puede leer las excepciones de permisos"
-        description="Las rutas de permisos por usuario exigen el módulo «user_permissions». Si no existe, créalo con ese código exacto desde «Módulos del sistema»; si ya existe, concédele Listar (para verlas) y Crear masivo, Actualizar masivo y Eliminar masivo (para guardarlas) al rol que deba administrarlas. Mientras tanto, solo un superadmin puede editar esta pantalla."
+        description="Las rutas de permisos por usuario exigen el módulo «user_permissions». Si no existe, créalo con ese código exacto desde «Módulos del sistema»; si ya existe, concédele Asignar permisos (para verlas) y Crear masivo, Actualizar masivo y Eliminar masivo (para guardarlas) al rol que deba administrarlas. Mientras tanto, solo un superadmin puede editar esta pantalla."
         :actions="[{
           label: 'Revisar módulos',
           color: 'error',
@@ -327,7 +327,7 @@ async function save() {
           variant="subtle"
           icon="i-lucide-triangle-alert"
           title="No se pudo leer lo que otorga el rol"
-          description="Falta el permiso `list` sobre los permisos de rol, así que el tooltip de «Hereda» y lo que se ve atenuado en cada acción no son fiables en esta pantalla. Lo que guardes se aplicará igual."
+          description="Falta el permiso `assign` sobre los permisos de rol, así que el tooltip de «Hereda» y lo que se ve atenuado en cada acción no son fiables en esta pantalla. Lo que guardes se aplicará igual."
         />
 
         <!-- Resumen: lo que importa aquí son las excepciones, no cuántos permisos hay -->

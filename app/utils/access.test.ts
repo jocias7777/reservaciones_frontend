@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AccessState } from './access'
 import {
+  ASSIGNABLE_MODULES,
   GUARDED_MODULES,
   MANAGED_MODULES,
   RESTORABLE_MODULES,
@@ -108,6 +109,17 @@ describe('resolveCanVisit', () => {
     expect(resolveCanVisit(conCrear, '/roles/acciones/nueva')).toBe(true)
   })
 
+  it('las matrices de permisos por rol y por usuario exigen "assign", no "list"', () => {
+    const soloLista = state({ granted: { 'role_permissions::list': true, 'role_permissions::assign': false } })
+    expect(resolveCanVisit(soloLista, '/roles/permisos')).toBe(false)
+
+    const conAssign = state({ granted: { 'role_permissions::list': false, 'role_permissions::assign': true } })
+    expect(resolveCanVisit(conAssign, '/roles/permisos')).toBe(true)
+
+    const usuarioSinAssign = state({ granted: { 'user_permissions::list': true, 'user_permissions::assign': false } })
+    expect(resolveCanVisit(usuarioSinAssign, '/usuarios/permisos')).toBe(false)
+  })
+
   it('una edición por id sigue cayendo en el listado del módulo (no hay ruta propia por id)', () => {
     const s = state({ granted: { 'roles::list': true, 'roles::update': false } })
     // No hay forma de distinguir un id real de otro segmento por prefijo, así
@@ -149,6 +161,11 @@ describe('accessForRoute — especificidad de prefijos', () => {
     for (const [path, module] of cases) {
       expect(accessForRoute(path)).toEqual({ prefix: path, module, action: 'create' })
     }
+  })
+
+  it('las matrices de permisos por rol y por usuario resuelven con "assign", no con "list"', () => {
+    expect(accessForRoute('/roles/permisos')).toEqual({ prefix: '/roles/permisos', module: 'role_permissions', action: 'assign' })
+    expect(accessForRoute('/usuarios/permisos')).toEqual({ prefix: '/usuarios/permisos', module: 'user_permissions', action: 'assign' })
   })
 })
 
@@ -212,6 +229,18 @@ describe('módulos con papelera', () => {
 
   it('todo módulo con papelera también está entre los módulos con listado guardado', () => {
     for (const module of RESTORABLE_MODULES) {
+      expect(GUARDED_MODULES).toContain(module)
+    }
+  })
+})
+
+describe('módulos con matriz de permisos', () => {
+  it('ASSIGNABLE_MODULES son justo role_permissions y user_permissions, las dos matrices', () => {
+    expect([...ASSIGNABLE_MODULES].sort()).toEqual(['role_permissions', 'user_permissions'])
+  })
+
+  it('todo módulo asignable también está entre los módulos con listado guardado', () => {
+    for (const module of ASSIGNABLE_MODULES) {
       expect(GUARDED_MODULES).toContain(module)
     }
   })

@@ -10,11 +10,14 @@
  * Casi siempre la acción es `list`, porque estas pantallas abren mostrando un
  * listado o una matriz, y eso va por `QUERY`. `read` no basta: es el permiso de
  * la ficha suelta y del desplegable de un formulario. Las excepciones son los
- * formularios de alta, que piden `create`, y las papeleras, que piden
- * `restore`: es el permiso base para poder sacarle partido a esa pantalla —
- * `bulk_restore` se prueba también (ver `RESTORABLE_MODULES`), pero solo para
+ * formularios de alta, que piden `create`; las papeleras, que piden `restore`
+ * —`bulk_restore` se prueba también (ver `RESTORABLE_MODULES`), pero solo para
  * el botón de "Restaurar masivo" *dentro* de la papelera, no para decidir si
- * se entra a ella.
+ * se entra a ella—; y las matrices de permisos por rol y por usuario, que
+ * piden `assign`: `GET .../by-role/:id` y `GET .../by-user/:id` lo exigen así
+ * a propósito, para poder ver y editar esas dos matrices sin tener que dar
+ * además `list`, que es acceso a la búsqueda avanzada sobre la tabla entera de
+ * asignaciones.
  */
 export interface RouteAccess {
   /** Prefijo de ruta. El orden importa: gana el primero que encaje. */
@@ -30,8 +33,10 @@ export interface RouteAccess {
  * igual.
  */
 export const ROUTE_ACCESS: RouteAccess[] = [
-  { prefix: '/usuarios/permisos', module: 'user_permissions', action: 'list' },
-  { prefix: '/roles/permisos', module: 'role_permissions', action: 'list' },
+  // `assign`, no `list`: son las matrices, no la búsqueda avanzada sobre la
+  // tabla de asignaciones/excepciones (ver la nota de arriba).
+  { prefix: '/usuarios/permisos', module: 'user_permissions', action: 'assign' },
+  { prefix: '/roles/permisos', module: 'role_permissions', action: 'assign' },
   { prefix: '/roles/modulos', module: 'permissions', action: 'list' },
   // Las papeleras piden `restore`, no `list`; los formularios de alta piden
   // `create`. Ambas van antes que el listado del que cuelgan porque, si no,
@@ -110,6 +115,15 @@ export const RESTORABLE_MODULES = modulesRequiring('restore')
 export const MANAGED_MODULES = modulesRequiring('create')
 
 /**
+ * Módulos con una matriz de permisos por rol o por usuario en la interfaz:
+ * los únicos donde hace falta saber si se puede `assign`.
+ *
+ * Igual que `RESTORABLE_MODULES` y `MANAGED_MODULES`, sale de `ROUTE_ACCESS`
+ * en vez de escribirse aparte.
+ */
+export const ASSIGNABLE_MODULES = modulesRequiring('assign')
+
+/**
  * Endpoint de cada módulo. El `code` del módulo y su ruta no siempre coinciden:
  * la tabla usa guion bajo (`action_categories`) y la URL guion (`/action-categories`).
  */
@@ -149,9 +163,9 @@ export interface AccessState {
  *
  * Cuando los permisos los publica el backend (`source === 'declared'`) se sabe
  * de todas las acciones, y lo que no aparece en `granted` es que no lo tiene.
- * Deduciéndolos por sondeo solo se averigua lo que de verdad se probó —listar,
- * y en los módulos con papelera también restaurar—: de lo que no se probó no
- * se sabe nada, así que se concede y el backend responderá 403 si no tocaba.
+ * Deduciéndolos por sondeo solo se averigua lo que de verdad se probó (ver
+ * `useAccessControl.probeAll`): de lo que no se probó no se sabe nada, así que
+ * se concede y el backend responderá 403 si no tocaba.
  * Antes de haber preguntado (`!loaded`) se concede también, para que el menú
  * no parpadee escondiendo apartados que sí se tienen.
  */

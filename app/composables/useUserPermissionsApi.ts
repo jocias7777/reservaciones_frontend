@@ -1,14 +1,9 @@
 import type {
-  AdvancedQuery,
   ApiEnvelope,
   CreateUserPermissionPayload,
-  PaginatedResult,
   UserPermission,
   UserPermissionBulkUpdateItem
 } from '~/types'
-
-/** Límite máximo de `limit` que acepta `AdvancedQuerySchema` en el backend. */
-const MAX_LIMIT = 100
 
 /**
  * `app/routes/user_permission_routes.py` (`/user-permissions`).
@@ -21,33 +16,18 @@ export function useUserPermissionsApi() {
   const api = useApi()
 
   return {
-    /** Todas las excepciones de un usuario, recorriendo la paginación del backend. */
-    async listByUser(userId: string): Promise<UserPermission[]> {
-      const rows: UserPermission[] = []
-      let page = 1
-      let hasMorePages = true
-
-      while (hasMorePages) {
-        const result = await unwrap(
-          api<ApiEnvelope<PaginatedResult<UserPermission>>>('/user-permissions', {
-            method: 'QUERY',
-            body: {
-              page,
-              limit: MAX_LIMIT,
-              filters: { user_id: userId },
-              sortBy: 'created_at',
-              sortOrder: 'ASC'
-            } satisfies AdvancedQuery
-          })
-        )
-
-        rows.push(...result.items)
-        hasMorePages = page < (result.pages || 1)
-        page += 1
-      }
-
-      return rows
-    },
+    /**
+     * `GET /user-permissions/by-user/:userId` — todas las excepciones activas
+     * de un usuario, sin papelera. Exige `assign`, no `list`: editar las
+     * excepciones de una persona no debería obligar a darle acceso a la
+     * búsqueda avanzada sobre la tabla entera de excepciones.
+     *
+     * Sin paginación de por medio —reemplaza al viejo `QUERY` recorrido
+     * página a página— porque el propio backend ya devuelve el conjunto
+     * completo.
+     */
+    listByUser: (userId: string) =>
+      unwrap(api<ApiEnvelope<UserPermission[]>>(`/user-permissions/by-user/${userId}`)),
 
     /**
      * `POST /user-permissions/bulk/create` — crea varias excepciones nuevas de
