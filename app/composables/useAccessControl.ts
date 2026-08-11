@@ -344,5 +344,20 @@ export function useAccessControl() {
     loaded.value = false
   }
 
-  return { granted, loaded, source, ensureLoaded, can, canVisit, canRestoreAny, firstAllowedRoute, reset }
+  /**
+   * Vuelve a preguntar sin esperar a un logout/login.
+   *
+   * `ensureLoaded` se pregunta una sola vez por sesión a propósito —sondear en
+   * cada navegación sale caro—, pero eso significa que guardar un cambio en
+   * «Permisos por rol» o «Permisos por usuario» no se refleja para quien
+   * acaba de hacerlo: sigue viendo el estado con el que entró hasta que cierra
+   * sesión. Esas dos pantallas llaman a esto justo después de guardar, para
+   * que la propia cuenta que edita vea el resultado ya, sin recargar.
+   */
+  function refresh(): Promise<void> {
+    reset()
+    return ensureLoaded()
+  }
+
+  return { granted, loaded, source, ensureLoaded, can, canVisit, canRestoreAny, firstAllowedRoute, reset, refresh }
 }

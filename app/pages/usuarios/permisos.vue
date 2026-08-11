@@ -11,6 +11,7 @@ const rolePermissionsApi = useRolePermissionsApi()
 const userPermissionsApi = useUserPermissionsApi()
 const { fetchPermissionCatalog } = usePermissionCatalog()
 const notify = useNotify()
+const access = useAccessControl()
 
 /**
  * Usuario elegido en la URL (`?usuario=<id>`), con aviso si hay cambios sin
@@ -221,6 +222,11 @@ async function save() {
     }
 
     await refresh()
+
+    // Si la cuenta editada es la que está guardando esto (o comparte sesión de
+    // pruebas con quien administra), sin esto seguiría viendo los botones con
+    // el estado con el que entró hasta cerrar sesión.
+    await access.refresh()
   } catch (err) {
     notify.error(err, 'No se pudieron guardar los permisos')
   } finally {

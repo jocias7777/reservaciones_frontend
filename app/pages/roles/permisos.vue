@@ -7,6 +7,7 @@ const rolesApi = useRolesApi()
 const rolePermissionsApi = useRolePermissionsApi()
 const { fetchPermissionCatalog } = usePermissionCatalog()
 const notify = useNotify()
+const access = useAccessControl()
 
 /**
  * Catálogo común a todos los roles: se pide una sola vez y no se vuelve a pedir
@@ -140,6 +141,11 @@ async function save() {
     }
 
     await refreshGranted()
+
+    // Quien acaba de guardar puede estar viendo, en esta misma sesión, botones
+    // que dependen de este mismo rol (la papelera, Agregar/Editar/Eliminar…).
+    // Sin esto seguiría viendo el estado con el que entró hasta cerrar sesión.
+    await access.refresh()
   } catch (err) {
     notify.error(err, 'No se pudieron guardar los permisos')
   } finally {

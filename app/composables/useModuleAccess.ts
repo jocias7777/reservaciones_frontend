@@ -20,11 +20,24 @@
 export function useModuleAccess(module: string) {
   const access = useAccessControl()
 
+  /**
+   * `restore` (una fila) y `bulk_restore` (varias) por separado: dentro de la
+   * papelera cada botón exige el suyo —el de cada fila no sirve de nada si
+   * falta `restore`, aunque sí haya `bulk_restore`, y viceversa con el de
+   * "Restaurar" en lote—, así que hace falta saberlos aparte y no solo la
+   * combinación que decide si vale la pena ofrecer la papelera.
+   */
+  const canRestoreOne = computed(() => access.can(module, 'restore'))
+  const canRestoreMany = computed(() => access.can(module, 'bulk_restore'))
+
   return {
     canCreate: computed(() => access.can(module, 'create')),
     canUpdate: computed(() => access.can(module, 'update')),
     canDelete: computed(() => access.can(module, 'delete')),
     canBulkDelete: computed(() => access.can(module, 'bulk_delete')),
-    canRestore: computed(() => access.canRestoreAny(module))
+    canRestoreOne,
+    canRestoreMany,
+    /** Si vale la pena ofrecer el botón "Papelera" del listado: con cualquiera de los dos ya sirve. */
+    canRestore: computed(() => canRestoreOne.value || canRestoreMany.value)
   }
 }

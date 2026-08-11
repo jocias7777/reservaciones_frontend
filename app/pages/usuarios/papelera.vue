@@ -10,6 +10,9 @@ useSeoMeta({ title: 'Papelera de usuarios' })
 
 const usersApi = useUsersApi()
 
+/** `restore` (fila) y `bulk_restore` (lote) son permisos aparte: cada botón exige el suyo. */
+const { canRestoreOne, canRestoreMany } = useModuleAccess('users')
+
 /** Botón de restaurar de cada fila: mismo tamaño de icono que el resto de la app. */
 const rowAction = {
   color: 'success',
@@ -84,8 +87,8 @@ const { rowSelection, selectedIds, restoring, restoreOne, restoreSelected } = us
     >
       <template #actions>
         <UButton
-          v-if="selectedIds.length"
-          :label="`Recuperar (${selectedIds.length})`"
+          v-if="selectedIds.length && canRestoreMany"
+          :label="`Restaurar masivo (${selectedIds.length})`"
           icon="i-lucide-archive-restore"
           color="success"
           variant="subtle"
@@ -165,7 +168,10 @@ const { rowSelection, selectedIds, restoring, restoreOne, restoreSelected } = us
 
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
-          <UTooltip text="Recuperar">
+          <UTooltip
+            v-if="canRestoreOne"
+            text="Recuperar"
+          >
             <UButton
               icon="i-lucide-archive-restore"
               v-bind="rowAction"
