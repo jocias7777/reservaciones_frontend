@@ -115,13 +115,14 @@ const exceptionLabel = computed(() =>
   -->
   <UCollapsible
     :open="props.open"
+    :disabled="props.disabled"
     class="border border-default rounded-lg bg-default"
     :ui="{ content: 'motion-reduce:animate-none' }"
     @update:open="emit('update:open', $event)"
   >
     <button
       type="button"
-      class="flex w-full items-center gap-3 rounded-t-lg p-4 text-start transition-colors duration-150 ease-out-quint hover:bg-elevated/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"
+      class="flex w-full items-center gap-3 rounded-t-lg p-4 text-start transition-colors duration-150 ease-out-quint hover:not-disabled:bg-elevated/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed motion-reduce:transition-none"
       :class="!props.open && 'rounded-b-lg'"
     >
       <BaseIconTile :icon="moduleIcon(props.module)" />

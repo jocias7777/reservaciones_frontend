@@ -3,15 +3,18 @@ definePageMeta({
   layout: 'app'
 })
 
-const rolesApi = useRolesApi()
 const rolePermissionsApi = useRolePermissionsApi()
-const { fetchPermissionCatalog } = usePermissionCatalog()
 const notify = useNotify()
 const access = useAccessControl()
 
 /**
  * Catálogo común a todos los roles: se pide una sola vez y no se vuelve a pedir
  * al cambiar de rol.
+ *
+ * Va por `/role-permissions/catalog`, que exige el mismo `assign` que la propia
+ * matriz. Antes eran cuatro llamadas —roles, módulos, acciones y categorías—,
+ * cada una pidiendo el `list` de su módulo: para administrar esta pantalla
+ * había que conceder además el listado de otros cuatro módulos.
  */
 const {
   data: catalog,
@@ -20,15 +23,7 @@ const {
   refresh: refreshCatalog
 } = useAsyncData(
   'role-permissions:catalog',
-  async () => {
-    const [rolesPage, catalogo] = await Promise.all([
-      // Con `expand` cada tarjeta puede decir a cuánta gente afecta el rol.
-      rolesApi.query({ limit: 100, sortBy: 'name', sortOrder: 'ASC', expand: ['users'] }),
-      fetchPermissionCatalog()
-    ])
-
-    return { roles: rolesPage.items, ...catalogo }
-  },
+  () => rolePermissionsApi.catalog(),
   { server: false }
 )
 
@@ -73,33 +68,49 @@ useSeoMeta({
   title: () => (selectedRole.value ? `Permisos · ${selectedRole.value.name}` : 'Permisos por rol')
 })
 
-/** `moduleId::actionId` -> id de la fila en `sa_role_permissions`, para poder borrarla. */
-const rowIdByKey = computed(() => {
-  const map = new Map<string, string>()
-  for (const row of granted.value ?? []) {
-    map.set(permissionKey(row.permission_id, row.action_id), row.id)
-  }
-  return map
-})
-
 // Cada vez que llegan datos frescos del servidor, la matriz parte de ahí.
 watch(granted, (rows) => {
-  matrix.setBaseline((rows ?? []).map(row => permissionKey(row.permission_id, row.action_id)))
+  matrix.setBaseline((rows ?? []).map(row => row.action_id))
 }, { immediate: true })
 
 const saving = ref(false)
 const loadingGranted = usePendingAfterHydration(grantedStatus)
 const loadingRole = computed(() => Boolean(selectedRoleId.value) && loadingGranted.value)
 
+/** Sin rol elegido la matriz se ve pero no se puede tocar, además de mientras se guarda. */
+const matrixDisabled = computed(() => saving.value || !selectedRole.value)
+
 /**
- * Guarda la diferencia entre lo que hay en pantalla y lo que había en el
- * servidor: lo quitado se revoca con un borrado masivo y lo añadido se
- * concede con una sola llamada a `bulk/create`, que reemplaza lo que antes
- * era un `POST` por combinación.
+ * Cuántas acciones distintas hay, para la cifra del resumen.
  *
- * `bulk/create` no es atómico —cada fila se confirma por su cuenta—, así que
- * un duplicado suelto no cancela el lote: viene detallado en `errores` junto
- * con lo que sí se guardó.
+ * Se cuentan por código y no por fila: cada acción pertenece a un módulo, así
+ * que «Crear» existe una vez por módulo y contarlas todas daría el número de
+ * celdas —que es lo que ya dice `total`— en vez de cuántas cosas distintas se
+ * pueden hacer.
+ */
+const distinctActionCount = computed(() =>
+  new Set(matrix.actions.value.map(action => action.code)).size
+)
+
+/**
+ * El atajo a los módulos, solo para quien pueda abrirlos: con «Asignar
+ * permisos» a secas se administra esta matriz sin acceso a ese catálogo, y
+ * ofrecer el botón sería mandarle a una pantalla que rebota.
+ */
+const irAModulos = computed(() =>
+  access.canVisit('/roles/modulos')
+    ? [{ label: 'Ir a módulos', icon: 'i-lucide-arrow-right', to: '/roles/modulos' }]
+    : []
+)
+
+/**
+ * Guarda la matriz de una vez: se manda el conjunto de combinaciones que debe
+ * quedar y el backend calcula la diferencia contra lo que tiene.
+ *
+ * Antes eran dos llamadas —revocar lo quitado y conceder lo añadido—, que
+ * pedían `bulk_delete` y `bulk_create` además de `assign`, y ninguna era
+ * atómica: un fallo a media tanda dejaba el rol con parte de los cambios
+ * aplicados. Ahora entra todo o no entra nada, y con `assign` basta.
  */
 async function save() {
   if (!selectedRole.value || !matrix.isDirty.value) return
@@ -107,38 +118,14 @@ async function save() {
   saving.value = true
 
   const roleId = selectedRole.value.id
-  const added = matrix.added.value
-  const removed = matrix.removed.value
 
   try {
-    const removedIds = removed
-      .map(key => rowIdByKey.value.get(key))
-      .filter((id): id is string => Boolean(id))
+    await rolePermissionsApi.syncByRole(
+      roleId,
+      matrix.enabledKeys.value.map(actionId => ({ action_id: actionId }))
+    )
 
-    if (removedIds.length) {
-      await rolePermissionsApi.bulkRemove(removedIds)
-    }
-
-    let failedCount = 0
-    let firstError = ''
-
-    if (added.length) {
-      const result = await rolePermissionsApi.bulkCreate(
-        added.map((key) => {
-          const { moduleId, actionId } = parsePermissionKey(key)
-          return { role_id: roleId, permission_id: moduleId, action_id: actionId }
-        })
-      )
-
-      failedCount = result.fallidos
-      firstError = result.errores[0]?.error ?? ''
-    }
-
-    if (failedCount) {
-      notify.warning('Se guardó parcialmente', `${failedCount} de ${added.length} permisos no se pudieron conceder: ${firstError}`)
-    } else {
-      notify.success('Permisos actualizados', `«${selectedRole.value.name}» quedó con ${matrix.activeCount.value} permiso(s) activo(s).`)
-    }
+    notify.success('Permisos actualizados', `«${selectedRole.value.name}» quedó con ${matrix.activeCount.value} permiso(s) activo(s).`)
 
     await refreshGranted()
 
@@ -161,8 +148,13 @@ async function save() {
       description="Elige un rol y define con los interruptores qué puede hacer en cada módulo."
     >
       <template #actions>
+        <!--
+          Solo si esa ficha se puede abrir: con «Asignar permisos» a secas se
+          administra esta matriz sin tener acceso al módulo de roles, y el
+          botón llevaba a una pantalla que rebota.
+        -->
         <UButton
-          v-if="selectedRole"
+          v-if="selectedRole && access.canVisit(`/roles/${selectedRole.id}`)"
           label="Datos del rol"
           icon="i-lucide-square-pen"
           color="neutral"
@@ -203,17 +195,34 @@ async function save() {
       <USkeleton class="h-64 w-full" />
     </div>
 
-    <template v-else-if="selectedRole">
+    <!--
+      Solo cuando la URL trae un rol que no está en la lista (borrado, o un
+      enlace viejo): es un caso distinto de "todavía no he elegido nada", así
+      que no comparte el bloque de abajo.
+    -->
+    <UEmpty
+      v-else-if="selectedRoleId && !selectedRole && catalogStatus === 'success'"
+      icon="i-lucide-search-x"
+      title="Ese rol ya no existe"
+      description="Puede que lo hayan eliminado. Elige otro en el selector de arriba."
+    />
+
+    <!--
+      La matriz se ve siempre, elegido o no un rol: sin nada elegido se muestran
+      los módulos reales pero en blanco y sin poder abrirse, para que la
+      pantalla no cambie de forma en cuanto se elige uno.
+    -->
+    <template v-else-if="catalog">
       <PermissionSummary
         headline="Rol"
-        :title="selectedRole.name"
-        :description="selectedRole.description"
+        :title="selectedRole?.name ?? 'Ningún rol elegido'"
+        :description="selectedRole ? selectedRole.description : 'Elige uno arriba para ver y editar sus permisos.'"
         :active-count="matrix.activeCount.value"
         :total="matrix.total.value"
         :modules-count="matrix.modules.value.length"
-        :actions-count="matrix.actions.value.length"
+        :actions-count="distinctActionCount"
         :all-selected="matrix.allSelected.value"
-        :disabled="saving"
+        :disabled="matrixDisabled"
         @toggle-all="matrix.setAll"
       />
 
@@ -222,7 +231,7 @@ async function save() {
         icon="i-lucide-key-round"
         title="No hay módulos definidos"
         description="Los permisos se construyen sobre los módulos del sistema. Crea al menos uno para poder asignarlos."
-        :actions="[{ label: 'Ir a módulos', icon: 'i-lucide-arrow-right', to: '/roles/modulos' }]"
+        :actions="irAModulos"
       />
 
       <PermissionModuleList
@@ -231,8 +240,8 @@ async function save() {
         :actions="matrix.actions.value"
         :categories="catalog?.categories ?? []"
         :values="matrix.valuesByModule.value"
-        :disabled="saving"
-        @toggle="(moduleId, actionId, value) => matrix.set(permissionKey(moduleId, actionId), value)"
+        :disabled="matrixDisabled"
+        @toggle="(moduleId, actionId, value) => matrix.set(actionId, value)"
         @toggle-module="matrix.setModule"
       />
 
@@ -245,17 +254,5 @@ async function save() {
         @save="save"
       />
     </template>
-
-    <!--
-      Solo cuando la URL trae un rol que no está en la lista (borrado, o un
-      enlace viejo). Sin nada elegido no se dice nada: debajo del selector no
-      hay más que el hueco, como en los permisos por usuario.
-    -->
-    <UEmpty
-      v-else-if="selectedRoleId && catalogStatus === 'success'"
-      icon="i-lucide-search-x"
-      title="Ese rol ya no existe"
-      description="Puede que lo hayan eliminado. Elige otro en el selector de arriba."
-    />
   </UContainer>
 </template>

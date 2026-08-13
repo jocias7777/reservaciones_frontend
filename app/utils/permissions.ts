@@ -235,12 +235,13 @@ export function actionMatchesQuery(action: Action, query: string): boolean {
   return actionLabel(action).toLowerCase().includes(needle)
 }
 
-/** Clave estable de una celda módulo × acción. */
-export function permissionKey(moduleId: string, actionId: string): string {
-  return `${moduleId}::${actionId}`
-}
-
-export function parsePermissionKey(key: string): { moduleId: string, actionId: string } {
-  const [moduleId = '', actionId = ''] = key.split('::')
-  return { moduleId, actionId }
+/**
+ * Las acciones de un módulo, ya agrupadas por categoría.
+ *
+ * Cada acción pertenece a un módulo, así que la matriz no es un producto de
+ * módulos por acciones: es cada módulo con las suyas. Antes se cruzaban todas
+ * con todos y salían combinaciones que ningún endpoint comprobaba.
+ */
+export function actionsOfModule(actions: Action[], moduleId: string): Action[] {
+  return actions.filter(action => action.permission_id === moduleId)
 }

@@ -2,7 +2,9 @@ import type {
   ApiEnvelope,
   CreateUserPermissionPayload,
   UserPermission,
-  UserPermissionBulkUpdateItem
+  UserPermissionBulkUpdateItem,
+  UserPermissionCatalog,
+  UserPermissionSyncResult
 } from '~/types'
 
 /**
@@ -28,6 +30,30 @@ export function useUserPermissionsApi() {
      */
     listByUser: (userId: string) =>
       unwrap(api<ApiEnvelope<UserPermission[]>>(`/user-permissions/by-user/${userId}`)),
+
+    /**
+     * `GET /user-permissions/catalog` — el gemelo del de rol: módulos,
+     * acciones, categorías y las personas del selector, cada una con su rol y
+     * su perfil. Exige `assign`, igual que `by-user`.
+     *
+     * Ver la nota de `useRolePermissionsApi.catalog`.
+     */
+    catalog: () => unwrap(api<ApiEnvelope<UserPermissionCatalog>>('/user-permissions/catalog')),
+
+    /**
+     * `PUT /user-permissions/by-user/:userId` — guarda la matriz entera: se
+     * mandan las excepciones que deben quedar y el backend calcula la
+     * diferencia. Lo que no va en la lista vuelve a heredar del rol.
+     *
+     * Exige `assign`, igual que leerla. Ver la nota de
+     * `useRolePermissionsApi.syncByRole`: antes eran hasta tres llamadas
+     * —crear, actualizar y borrar—, cada una con su permiso y ninguna atómica.
+     */
+    syncByUser: (userId: string, items: Array<Omit<CreateUserPermissionPayload, 'user_id'>>) =>
+      unwrap(api<ApiEnvelope<UserPermissionSyncResult>>(`/user-permissions/by-user/${userId}`, {
+        method: 'PUT',
+        body: { items }
+      })),
 
     /**
      * `POST /user-permissions/bulk/create` — crea varias excepciones nuevas de

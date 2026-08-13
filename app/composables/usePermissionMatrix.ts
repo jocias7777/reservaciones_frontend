@@ -6,20 +6,17 @@ export interface UsePermissionMatrixOptions {
 }
 
 /**
- * Estado de la matriz módulo × acción.
+ * Estado de la matriz de permisos de un rol.
  *
- * Trabaja con claves `moduleId::actionId` y mantiene dos conjuntos: el que llegó
- * del servidor (`baseline`) y el que el usuario está editando (`draft`). La
- * diferencia entre ambos es exactamente lo que hay que guardar, así que no hace
- * falta llamar a la API en cada interruptor.
+ * La clave de una celda es el id de la acción, y nada más: cada acción ya
+ * pertenece a un módulo, así que decir «esta acción» es decir «esto en aquel
+ * módulo». Antes la clave era el par `moduleId::actionId` porque la acción era
+ * un verbo suelto que se cruzaba con cualquier módulo, y de ahí salían
+ * combinaciones que ningún endpoint comprobaba.
  *
- * Todos los módulos ofrecen todo el catálogo de acciones: así una acción recién
- * dada de alta aparece en el acto donde se espera. Que una combinación restrinja
- * algo de verdad depende de que el backend proteja alguna ruta con ese código,
- * y eso se consulta en la pantalla de acciones.
- *
- * Sirve igual para roles (permisos del rol) y para usuarios (permiso efectivo,
- * del que luego se derivan las excepciones).
+ * Se mantienen dos conjuntos: el que llegó del servidor (`baseline`) y el que
+ * el usuario está editando (`draft`). La diferencia entre ambos es lo que hay
+ * sin guardar, así que no hace falta llamar a la API en cada interruptor.
  */
 export function usePermissionMatrix(options: UsePermissionMatrixOptions) {
   const modules = computed(() => toValue(options.modules))
@@ -46,23 +43,32 @@ export function usePermissionMatrix(options: UsePermissionMatrixOptions) {
     draft.value = next
   }
 
-  /** Todas las claves posibles de la matriz, en orden de módulo y acción. */
-  const allKeys = computed(() =>
-    modules.value.flatMap(module => actions.value.map(action => permissionKey(module.id, action.id)))
+  /** Las acciones de cada módulo, que es como se pinta y se cuenta la matriz. */
+  const actionsByModule = computed(() =>
+    Object.fromEntries(
+      modules.value.map(module => [module.id, actionsOfModule(actions.value, module.id)])
+    )
   )
 
-  function keysOfModule(moduleId: string) {
-    return actions.value.map(action => permissionKey(moduleId, action.id))
-  }
+  /**
+   * Todas las celdas de la matriz, en orden de módulo y acción.
+   *
+   * No es el producto de módulos por acciones: es la suma de las acciones de
+   * cada módulo. Una acción huérfana —de un módulo que no está en la lista— no
+   * entra, igual que antes no entraba una combinación imposible.
+   */
+  const allKeys = computed(() =>
+    modules.value.flatMap(module => (actionsByModule.value[module.id] ?? []).map(action => action.id))
+  )
 
   /** Enciende o apaga todas las acciones de un módulo. */
   function setModule(moduleId: string, enabled: boolean) {
     const next = new Set(draft.value)
-    for (const key of keysOfModule(moduleId)) {
+    for (const action of actionsByModule.value[moduleId] ?? []) {
       if (enabled) {
-        next.add(key)
+        next.add(action.id)
       } else {
-        next.delete(key)
+        next.delete(action.id)
       }
     }
     draft.value = next
@@ -76,6 +82,16 @@ export function usePermissionMatrix(options: UsePermissionMatrixOptions) {
   const total = computed(() => allKeys.value.length)
   const activeCount = computed(() => allKeys.value.filter(key => draft.value.has(key)).length)
   const allSelected = computed(() => total.value > 0 && activeCount.value === total.value)
+
+  /**
+   * Todas las acciones encendidas ahora mismo, en el orden de la matriz.
+   *
+   * Es lo que se manda al guardar: el conjunto que debe quedar, no la
+   * diferencia. Va ordenado y no como `[...draft]` porque el orden de un Set es
+   * el de inserción —o sea, el orden en que se fueron tocando los
+   * interruptores—, y eso hacía ilegible el cuerpo de la petición.
+   */
+  const enabledKeys = computed(() => allKeys.value.filter(key => draft.value.has(key)))
 
   /** Claves que hay que conceder al guardar. */
   const added = computed(() => [...draft.value].filter(key => !baseline.value.has(key)))
@@ -98,8 +114,8 @@ export function usePermissionMatrix(options: UsePermissionMatrixOptions) {
 
     for (const module of modules.value) {
       const porAccion: Record<string, boolean> = {}
-      for (const action of actions.value) {
-        porAccion[action.id] = keys.has(permissionKey(module.id, action.id))
+      for (const action of actionsByModule.value[module.id] ?? []) {
+        porAccion[action.id] = keys.has(action.id)
       }
       result[module.id] = porAccion
     }
@@ -113,10 +129,12 @@ export function usePermissionMatrix(options: UsePermissionMatrixOptions) {
   return {
     modules,
     actions,
+    actionsByModule,
     draft,
     total,
     activeCount,
     allSelected,
+    enabledKeys,
     added,
     removed,
     changeCount,

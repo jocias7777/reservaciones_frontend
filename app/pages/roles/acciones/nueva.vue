@@ -9,6 +9,7 @@ useSeoMeta({ title: 'Agregar acción' })
 
 const actionsApi = useActionsApi()
 const actionCategoriesApi = useActionCategoriesApi()
+const modulesApi = useModulesApi()
 const notify = useNotify()
 const { saving, save } = useSaveAction()
 
@@ -20,6 +21,17 @@ const { saving, save } = useSaveAction()
 const { data: categories, error, refresh } = useAsyncData(
   'action-categories:for-action-form',
   () => actionCategoriesApi.list().catch(() => []),
+  { server: false, default: () => [] }
+)
+
+/**
+ * Los módulos, en cambio, sí son obligatorios: una acción pertenece a uno, y
+ * sin elegirlo no se puede crear. Si el listado falla, el formulario lo dirá al
+ * validar en vez de mandar una petición que el backend va a rechazar.
+ */
+const { data: modules } = useAsyncData(
+  'modules:for-action-form',
+  () => modulesApi.list().catch(() => []),
   { server: false, default: () => [] }
 )
 
@@ -82,6 +94,7 @@ function onSubmit(payload: CreateActionPayload) {
     <ActionForm
       :id="FORM_ID"
       :categories="categories"
+      :modules="modules"
       @submit="onSubmit"
     />
   </BaseFormPage>

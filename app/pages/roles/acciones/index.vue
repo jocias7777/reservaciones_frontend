@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ButtonProps, TableColumn } from '@nuxt/ui'
-import type { Action } from '~/types'
+import type { Action, AvailableActions } from '~/types'
 
 definePageMeta({
   layout: 'app'
@@ -9,11 +9,13 @@ definePageMeta({
 useSeoMeta({ title: 'Acciones' })
 
 /**
- * Catálogo de acciones: qué se puede permitir o negar sobre cada módulo.
+ * Catálogo de acciones: qué se puede permitir o negar en cada módulo.
  *
- * Se pueden dar de alta, pero la acción solo restringe algo cuando el backend
- * protege alguna ruta con su código (`require_permission(modulo, '<code>')`).
- * Mientras tanto se puede conceder y revocar, pero no impide nada.
+ * Cada acción pertenece a un módulo, así que «Crear» aparece una vez por cada
+ * módulo que lo implemente: `users.create` y `roles.create` son dos permisos
+ * distintos. Lo normal es no darlas de alta a mano —el seeder las genera a
+ * partir de las rutas que existen—, y una creada a mano solo restringe algo
+ * cuando el backend protege alguna ruta con su código.
  */
 const actionsApi = useActionsApi()
 const modulesApi = useModulesApi()
@@ -22,27 +24,29 @@ const modulesApi = useModulesApi()
 const { canCreate, canUpdate, canDelete, canBulkDelete, canRestore } = useModuleAccess('actions')
 
 /**
- * En qué módulos comprueba el backend cada acción.
+ * Qué acciones comprueba de verdad el backend, por módulo.
  *
- * La matriz de permisos ofrece TODAS las acciones en todos los módulos, así que
- * una acción recién creada se puede conceder desde el primer momento. Otra cosa
- * es que restrinja algo: eso solo pasa donde alguna ruta la comprueba, y es lo
- * que dice esta columna para no dar por hecho un permiso que no frena nada.
+ * Sirve para avisar de las que existen en el catálogo pero no frenan nada:
+ * normalmente son las creadas a mano antes de que exista la ruta que las
+ * comprueba.
  */
-const { data: availableActions } = useAsyncData(
+const { data: availableActions } = useAsyncData<AvailableActions>(
   'permissions:available-actions',
   () => modulesApi.availableActions().catch(() => ({})),
   { server: false, default: () => ({}) }
 )
 
-/** Códigos de acción que algún módulo comprueba. */
-const usedCodes = computed(() => new Set(Object.values(availableActions.value).flat()))
-
-/** Nombres de los módulos donde se comprueba una acción. */
-function modulesUsing(code: string): string[] {
-  return Object.entries(availableActions.value)
-    .filter(([, codes]) => codes.includes(code))
-    .map(([moduleCode]) => moduleCode)
+/**
+ * Si esta acción concreta la comprueba alguna ruta.
+ *
+ * Se mira por módulo Y código, no solo por código: desde que cada acción
+ * pertenece a un módulo, que `roles` compruebe `hard_delete` no dice nada sobre
+ * si `actions` lo comprueba.
+ */
+function isChecked(action: Action): boolean {
+  const moduleCode = action.permission?.code
+  if (!moduleCode) return false
+  return (availableActions.value[moduleCode] ?? []).includes(action.code)
 }
 
 const rowAction = rowActionProps()
@@ -68,7 +72,7 @@ const {
   key: 'actions:list',
   fetcher: query => actionsApi.query(query),
   searchFields: ['code', 'name', 'description'],
-  expand: ['category'],
+  expand: ['category', 'permission'],
   sortBy: 'code',
   sortOrder: 'ASC'
 })
@@ -76,6 +80,9 @@ const {
 const columns: TableColumn<Action>[] = [
   { id: 'select' },
   { accessorKey: 'name', header: 'Acción' },
+  // El módulo va primero de las dos: es lo que distingue dos acciones con el
+  // mismo nombre, y sin él la tabla parece llena de duplicados.
+  { accessorKey: 'permission', header: 'Módulo' },
   { accessorKey: 'category', header: 'Categoría' },
   { id: 'usage', header: 'Efecto real' },
   { accessorKey: 'description', header: 'Descripción' },
@@ -200,17 +207,17 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
       </template>
 
       <!--
-        En cuántos módulos restringe algo de verdad. Se puede conceder en todos
-        —la matriz ofrece el catálogo completo—, pero solo frena donde el backend
-        comprueba el código, y eso conviene saberlo antes de darlo por hecho.
+        Si esta acción frena algo de verdad. Casi todas sí: las genera el seeder
+        a partir de las rutas que existen. Las que no suelen ser altas a mano
+        hechas antes de que exista la ruta que las comprueba.
       -->
       <template #usage-cell="{ row }">
         <UTooltip
-          v-if="usedCodes.has(row.original.code)"
-          :text="`Se comprueba en: ${modulesUsing(row.original.code).join(', ')}`"
+          v-if="isChecked(row.original)"
+          :text="`El backend la comprueba en ${row.original.permission?.name}`"
         >
           <UBadge
-            :label="`${modulesUsing(row.original.code).length} módulo(s)`"
+            label="En uso"
             color="neutral"
             variant="subtle"
             icon="i-lucide-shield-check"
@@ -218,7 +225,7 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
         </UTooltip>
         <UTooltip
           v-else
-          text="Ya se puede conceder en cualquier módulo, pero todavía no restringe nada: ninguna ruta del backend comprueba este código. Empezará a surtir efecto en cuanto alguna lo haga."
+          text="Se puede conceder, pero todavía no restringe nada: ninguna ruta de este módulo comprueba este código. Empezará a surtir efecto en cuanto alguna lo haga."
         >
           <UBadge
             label="Todavía sin efecto"
@@ -227,6 +234,20 @@ const { rowSelection, selectedIds, removing, removeOne, removeSelected } = useRe
             icon="i-lucide-circle-alert"
           />
         </UTooltip>
+      </template>
+
+      <template #permission-cell="{ row }">
+        <UBadge
+          v-if="row.original.permission"
+          :label="row.original.permission.name"
+          color="neutral"
+          variant="subtle"
+          :icon="moduleIcon(row.original.permission)"
+        />
+        <span
+          v-else
+          class="text-sm text-muted"
+        >—</span>
       </template>
 
       <template #description-cell="{ row }">

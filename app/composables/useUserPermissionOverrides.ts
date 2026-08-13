@@ -3,7 +3,7 @@ import type { Action, OverrideState, PermissionModule } from '~/types'
 export interface UseUserPermissionOverridesOptions {
   modules: MaybeRefOrGetter<PermissionModule[]>
   actions: MaybeRefOrGetter<Action[]>
-  /** Claves `moduleId::actionId` que concede el rol del usuario. */
+  /** Ids de las acciones que concede el rol del usuario. */
   inherited: MaybeRefOrGetter<Set<string>>
 }
 
@@ -18,7 +18,7 @@ export interface OverrideChange {
  * Estado de la pantalla de permisos de un usuario.
  *
  * A diferencia de `usePermissionMatrix` —que usa la pantalla de roles y trabaja
- * con un conjunto de claves activas— aquí cada celda tiene TRES estados, porque
+ * con un conjunto de acciones activas— aquí cada celda tiene TRES estados, porque
  * es lo que sabe representar `sa_user_permissions`: heredar del rol, conceder o
  * bloquear. El mapa guarda solo las excepciones; una clave ausente es `inherit`,
  * igual que en la tabla la ausencia de fila significa "manda el rol".
@@ -53,19 +53,27 @@ export function useUserPermissionOverrides(options: UseUserPermissionOverridesOp
     draft.value = next
   }
 
-  /** Todas las claves posibles, en orden de módulo y acción. */
-  const allKeys = computed(() =>
-    modules.value.flatMap(module => actions.value.map(action => permissionKey(module.id, action.id)))
+  /** Las acciones de cada módulo, que es como se pinta y se cuenta la matriz. */
+  const actionsByModule = computed(() =>
+    Object.fromEntries(
+      modules.value.map(module => [module.id, actionsOfModule(actions.value, module.id)])
+    )
   )
 
-  function keysOfModule(moduleId: string) {
-    return actions.value.map(action => permissionKey(moduleId, action.id))
-  }
+  /**
+   * Todas las celdas, en orden de módulo y acción.
+   *
+   * La clave de una celda es el id de la acción y nada más: cada acción ya
+   * pertenece a un módulo, así que no hay producto de módulos por acciones.
+   */
+  const allKeys = computed(() =>
+    modules.value.flatMap(module => (actionsByModule.value[module.id] ?? []).map(action => action.id))
+  )
 
   /** Aplica un mismo estado a todas las acciones de un módulo. */
   function setModule(moduleId: string, state: OverrideState) {
     const next = new Map(draft.value)
-    for (const key of keysOfModule(moduleId)) {
+    for (const { id: key } of actionsByModule.value[moduleId] ?? []) {
       if (state === 'inherit') {
         next.delete(key)
       } else {
@@ -88,8 +96,8 @@ export function useUserPermissionOverrides(options: UseUserPermissionOverridesOp
   /** Estado por acción de un módulo, listo para la tarjeta. */
   function statesOfModule(moduleId: string): Record<string, OverrideState> {
     const result: Record<string, OverrideState> = {}
-    for (const action of actions.value) {
-      result[action.id] = stateOf(permissionKey(moduleId, action.id))
+    for (const action of actionsByModule.value[moduleId] ?? []) {
+      result[action.id] = stateOf(action.id)
     }
     return result
   }
@@ -97,8 +105,8 @@ export function useUserPermissionOverrides(options: UseUserPermissionOverridesOp
   /** Lo que concede el rol por acción de un módulo, para la columna "El rol da". */
   function inheritedOfModule(moduleId: string): Record<string, boolean> {
     const result: Record<string, boolean> = {}
-    for (const action of actions.value) {
-      result[action.id] = inherited.value.has(permissionKey(moduleId, action.id))
+    for (const action of actionsByModule.value[moduleId] ?? []) {
+      result[action.id] = inherited.value.has(action.id)
     }
     return result
   }
@@ -121,8 +129,23 @@ export function useUserPermissionOverrides(options: UseUserPermissionOverridesOp
   const effectiveCount = computed(() => allKeys.value.filter(key => effective(key)).length)
 
   /**
-   * Celdas cuyo estado difiere de lo guardado. De aquí sale una única llamada a
-   * la API por celda: alta, cambio de `is_grant` o baja de la excepción.
+   * Las excepciones que deben quedar guardadas, en el orden de la matriz.
+   *
+   * Es lo que se manda al guardar: el conjunto completo, no la diferencia. Lo
+   * que no está aquí es que hereda del rol, y heredar es no tener fila. Va
+   * ordenado por la matriz y no por el orden del `Map` —que es el de
+   * inserción, o sea el orden en que se fueron tocando las celdas— para que el
+   * cuerpo de la petición se pueda leer.
+   */
+  const exceptions = computed(() =>
+    allKeys.value
+      .filter(key => draft.value.has(key))
+      .map(key => ({ key, isGrant: draft.value.get(key) === 'grant' }))
+  )
+
+  /**
+   * Celdas cuyo estado difiere de lo guardado. Alimenta el contador del pie de
+   * guardado: cuántas excepciones se tocaron desde que se abrió la pantalla.
    */
   const changes = computed<OverrideChange[]>(() => {
     const keys = new Set([...baseline.value.keys(), ...draft.value.keys()])
@@ -153,6 +176,7 @@ export function useUserPermissionOverrides(options: UseUserPermissionOverridesOp
   return {
     modules,
     actions,
+    actionsByModule,
     draft,
     statesByModule,
     inheritedByModule,
@@ -161,6 +185,7 @@ export function useUserPermissionOverrides(options: UseUserPermissionOverridesOp
     denyCount,
     inheritedCount,
     effectiveCount,
+    exceptions,
     changes,
     changeCount,
     addedCount,

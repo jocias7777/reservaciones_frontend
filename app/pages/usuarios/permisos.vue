@@ -1,15 +1,12 @@
 <script setup lang="ts">
-import type { CreateUserPermissionPayload, UserPermission, UserPermissionBulkUpdateItem } from '~/types'
+import type { UserPermission } from '~/types'
 
 definePageMeta({
   layout: 'app'
 })
 
-const usersApi = useUsersApi()
-const rolesApi = useRolesApi()
 const rolePermissionsApi = useRolePermissionsApi()
 const userPermissionsApi = useUserPermissionsApi()
-const { fetchPermissionCatalog } = usePermissionCatalog()
 const notify = useNotify()
 const access = useAccessControl()
 
@@ -24,24 +21,30 @@ const { selectedId: selectedUserId, picked: pickedUserId } = usePermissionSelect
   isDirty: () => editor.isDirty.value
 })
 
-/** Usuarios del selector: se piden una vez, no en cada cambio. */
+/**
+ * El catálogo de la pantalla —módulos, acciones, categorías y las personas del
+ * selector—: se pide una sola vez y no depende de a quién se esté editando, así
+ * que la matriz se puede pintar entera (aunque en blanco) antes de elegir a
+ * nadie.
+ *
+ * Va por `/user-permissions/catalog`, que exige el mismo `assign` que la propia
+ * matriz. Antes eran cuatro llamadas —usuarios, módulos, acciones y
+ * categorías—, cada una pidiendo el `list` de su módulo: para administrar esta
+ * pantalla había que conceder además el listado de usuarios y de otros tres
+ * módulos.
+ */
 const {
-  data: users,
-  error: usersError,
-  refresh: refreshUsers
+  data: catalog,
+  error: catalogError,
+  refresh: refreshCatalog
 } = useAsyncData(
-  'user-permissions:users',
-  async () => {
-    const page = await usersApi.query({
-      limit: 100,
-      sortBy: 'email',
-      sortOrder: 'ASC',
-      expand: ['role', 'profile']
-    })
-    return page.items
-  },
+  'user-permissions:catalog',
+  () => userPermissionsApi.catalog(),
   { server: false }
 )
+
+/** Las personas del selector salen del propio catálogo, ya con rol y perfil. */
+const users = computed(() => catalog.value?.users ?? [])
 
 /**
  * Aquí se editan las EXCEPCIONES de un usuario sobre lo que concede su rol, no
@@ -56,10 +59,11 @@ const { data, status, error, refresh } = useAsyncData(
 
     const userId = selectedUserId.value
 
-    const [user, catalogo] = await Promise.all([
-      usersApi.get(userId),
-      fetchPermissionCatalog()
-    ])
+    // La persona y su rol salen del catálogo, que ya viene con las dos cosas.
+    // Pedir su ficha aparte exigía `users:read`, un permiso más que conceder
+    // para no averiguar nada que no estuviera ya en el selector.
+    const user = users.value.find(candidate => candidate.id === userId)
+    if (!user) return null
 
     // Sin poder leer las excepciones no se puede editar nada sin riesgo de
     // pisar lo que ya hubiera guardado, así que se distingue el 403 para
@@ -82,22 +86,21 @@ const { data, status, error, refresh } = useAsyncData(
     if (user.role_id) {
       try {
         const rows = await rolePermissionsApi.listByRole(user.role_id)
-        inheritedKeys = rows.map(row => permissionKey(row.permission_id, row.action_id))
+        inheritedKeys = rows.map(row => row.action_id)
       } catch {
         inheritedAvailable = false
       }
     }
 
-    const role = user.role_id
-      ? await rolesApi.get(user.role_id).catch(() => null)
-      : null
-
     return {
-      user, role, ...catalogo,
+      user,
+      role: user.role ?? null,
       overrides, overridesForbidden, inheritedKeys, inheritedAvailable
     }
   },
-  { server: false, watch: [selectedUserId] }
+  // El catálogo trae al usuario elegido, así que hay que reintentar cuando
+  // llegue: con `?usuario=` en la URL, esto corre antes de que esté cargado.
+  { server: false, watch: [selectedUserId, users] }
 )
 
 useSeoMeta({
@@ -107,25 +110,16 @@ useSeoMeta({
 const inherited = computed(() => new Set(data.value?.inheritedKeys ?? []))
 
 const editor = useUserPermissionOverrides({
-  modules: () => data.value?.modules ?? [],
-  actions: () => data.value?.actions ?? [],
+  modules: () => catalog.value?.modules ?? [],
+  actions: () => catalog.value?.actions ?? [],
   inherited: () => inherited.value
-})
-
-/** `moduleId::actionId` -> excepción guardada, para conocer su `id` al guardar. */
-const overrideByKey = computed(() => {
-  const map = new Map<string, UserPermission>()
-  for (const row of data.value?.overrides ?? []) {
-    map.set(permissionKey(row.permission_id, row.action_id), row)
-  }
-  return map
 })
 
 // El punto de partida es una traducción 1:1 de la tabla: lo que no tiene fila
 // se queda en `inherit`.
 watch(data, (value) => {
   editor.setBaseline((value?.overrides ?? []).map(row => [
-    permissionKey(row.permission_id, row.action_id),
+    row.action_id,
     row.is_grant ? 'grant' : 'deny'
   ] as const))
 }, { immediate: true })
@@ -134,11 +128,45 @@ const userName = computed(() =>
   fullName(data.value?.user.profile) ?? data.value?.user.username ?? data.value?.user.email ?? 'Usuario'
 )
 
-/** Todas las celdas de la matriz: sobre esto se mide cuánto puede hacer. */
-const totalCombinations = computed(() => editor.modules.value.length * editor.actions.value.length)
+/**
+ * Todas las celdas de la matriz: sobre esto se mide cuánto puede hacer.
+ *
+ * Es la suma de las acciones de cada módulo, no módulos × acciones: cada acción
+ * pertenece a un módulo y no todos implementan las mismas.
+ */
+const totalCombinations = computed(() =>
+  editor.modules.value.reduce(
+    (suma, module) => suma + (editor.actionsByModule.value[module.id]?.length ?? 0),
+    0
+  )
+)
 
 const loading = usePendingAfterHydration(status)
-const loadingUser = computed(() => Boolean(selectedUserId.value) && loading.value)
+/**
+ * También mientras falta el catálogo: la persona elegida sale de ahí, así que
+ * con `?usuario=` en la URL esto corre una vez en vacío antes de que llegue.
+ * Sin esperarlo se vería un parpadeo de la matriz en blanco.
+ */
+const loadingUser = computed(() =>
+  Boolean(selectedUserId.value) && (loading.value || !catalog.value)
+)
+
+/**
+ * Los atajos a otras pantallas, solo para quien pueda abrirlas: con «Asignar
+ * permisos» a secas se administra esta matriz sin acceso ni al módulo de
+ * usuarios ni al catálogo de módulos, y ofrecerlos sería mandarle a una
+ * pantalla que rebota.
+ */
+const irAModulos = computed(() =>
+  access.canVisit('/roles/modulos')
+    ? [{ label: 'Ir a módulos', icon: 'i-lucide-arrow-right', to: '/roles/modulos' }]
+    : []
+)
+
+const asignarRol = (userId: string) =>
+  (access.canVisit(`/usuarios/${userId}`)
+    ? [{ label: 'Asignar rol', color: 'warning' as const, variant: 'outline' as const, to: `/usuarios/${userId}` }]
+    : [])
 
 /** Opciones del selector: nombre visible arriba y correo debajo. */
 const userItems = computed(() =>
@@ -153,13 +181,18 @@ const userItems = computed(() =>
 
 const saving = ref(false)
 
+/** Sin usuario elegido la matriz se ve pero no se puede tocar, además de mientras se guarda. */
+const matrixDisabled = computed(() => saving.value || !data.value)
+
 /**
- * Guarda los cambios agrupados por lo que hace falta hacer con cada uno:
- * volver a heredar se revoca con un borrado masivo, lo nuevo se concede con
- * `bulk/create` y lo que ya existía como excepción se ajusta con
- * `bulk/update`. Como en permisos por rol, ninguno de los dos `bulk/*` es
- * atómico: un choque de negocio suelto no cancela el lote, sale detallado en
- * `errores` junto con lo que sí se guardó.
+ * Guarda la matriz de una vez: se mandan las excepciones que deben quedar y el
+ * backend calcula la diferencia. Lo que no va en la lista vuelve a heredar del
+ * rol.
+ *
+ * Antes eran hasta tres llamadas —quitar, crear y ajustar—, que pedían
+ * `bulk_delete`, `bulk_create` y `bulk_update` además de `assign`, y ninguna
+ * era atómica: un fallo a media tanda dejaba a la persona con parte de los
+ * cambios. Ahora entra todo o no entra nada, y con `assign` basta.
  */
 async function save() {
   if (!data.value || !editor.isDirty.value) return
@@ -168,58 +201,13 @@ async function save() {
 
   const userId = data.value.user.id
 
-  const toRemoveIds: string[] = []
-  const toCreate: CreateUserPermissionPayload[] = []
-  const toUpdate: UserPermissionBulkUpdateItem[] = []
-
-  for (const change of editor.changes.value) {
-    const existing = overrideByKey.value.get(change.key)
-
-    // Vuelve a lo que diga el rol: la excepción ya no hace falta.
-    if (change.to === 'inherit') {
-      if (existing) toRemoveIds.push(existing.id)
-      continue
-    }
-
-    const isGrant = change.to === 'grant'
-
-    // Si ya existía como excepción, se ajusta; si no, se crea de cero.
-    if (existing) {
-      toUpdate.push({ id: existing.id, is_grant: isGrant })
-    } else {
-      const { moduleId, actionId } = parsePermissionKey(change.key)
-      toCreate.push({ user_id: userId, permission_id: moduleId, action_id: actionId, is_grant: isGrant })
-    }
-  }
-
   try {
-    if (toRemoveIds.length) {
-      await userPermissionsApi.bulkRemove(toRemoveIds)
-    }
+    await userPermissionsApi.syncByUser(
+      userId,
+      editor.exceptions.value.map(({ key, isGrant }) => ({ action_id: key, is_grant: isGrant }))
+    )
 
-    let failedCount = 0
-    let attemptedCount = 0
-    let firstError = ''
-
-    if (toCreate.length) {
-      const result = await userPermissionsApi.bulkCreate(toCreate)
-      failedCount += result.fallidos
-      attemptedCount += toCreate.length
-      firstError ||= result.errores[0]?.error ?? ''
-    }
-
-    if (toUpdate.length) {
-      const result = await userPermissionsApi.bulkUpdate(toUpdate)
-      failedCount += result.fallidos
-      attemptedCount += toUpdate.length
-      firstError ||= result.errores[0]?.error ?? ''
-    }
-
-    if (failedCount) {
-      notify.warning('Se guardó parcialmente', `${failedCount} de ${attemptedCount} cambios fallaron: ${firstError}`)
-    } else {
-      notify.success('Permisos actualizados', `Se guardaron las excepciones de ${userName.value}.`)
-    }
+    notify.success('Permisos actualizados', `Se guardaron las excepciones de ${userName.value}.`)
 
     await refresh()
 
@@ -242,8 +230,13 @@ async function save() {
       description="Excepciones sobre lo que concede su rol: qué puede hacer aunque el rol no lo dé, y qué no aunque el rol sí lo dé."
     >
       <template #actions>
+        <!--
+          Solo si esa ficha se puede abrir: con «Asignar permisos» a secas se
+          administra esta matriz sin tener acceso al módulo de usuarios, y el
+          botón llevaba a una pantalla que rebota.
+        -->
         <UButton
-          v-if="data"
+          v-if="data && access.canVisit(`/usuarios/${data.user.id}`)"
           label="Datos del usuario"
           icon="i-lucide-square-pen"
           color="neutral"
@@ -259,14 +252,14 @@ async function save() {
       icon="i-lucide-circle-user"
       placeholder="Elige un usuario"
       search-placeholder="Buscar por nombre o correo…"
-      :loading="!users && !usersError"
+      :loading="!catalog && !catalogError"
       :disabled="saving"
     />
 
     <BaseErrorAlert
-      :error="usersError"
-      title="No se pudieron cargar los usuarios"
-      @retry="refreshUsers"
+      :error="catalogError"
+      title="No se pudo cargar el catálogo de permisos"
+      @retry="refreshCatalog"
     />
 
     <BaseErrorAlert
@@ -283,7 +276,14 @@ async function save() {
       <USkeleton class="h-64 w-full" />
     </div>
 
-    <template v-else-if="data">
+    <!--
+      La matriz se ve siempre, elegido o no un usuario: sin nada elegido se
+      muestran los módulos reales pero en blanco y sin poder abrirse, para que
+      la pantalla no cambie de forma en cuanto se elige uno. Los avisos de
+      abajo (403, sin rol, sin lo heredado) sí son propios de un usuario
+      concreto y solo aparecen una vez cargado.
+    -->
+    <template v-else-if="catalog">
       <!--
         El backend protege `/user-permissions` con el módulo `user_permissions`.
         Un 403 aquí no distingue si el módulo no existe o si existe pero nadie
@@ -291,7 +291,7 @@ async function save() {
         el aviso cubre ambas en vez de asumir una.
       -->
       <UAlert
-        v-if="data.overridesForbidden"
+        v-if="data?.overridesForbidden"
         color="error"
         variant="subtle"
         icon="i-lucide-lock"
@@ -312,17 +312,17 @@ async function save() {
 
       <template v-else>
         <UAlert
-          v-if="!data.user.role_id"
+          v-if="data && !data.user.role_id"
           color="warning"
           variant="subtle"
           icon="i-lucide-triangle-alert"
           title="Este usuario no tiene rol"
           description="Sin rol no hereda nada: el tooltip de «Hereda» dirá que no en todo, y lo único que le dará permisos son las excepciones que marques aquí. Asignarle un rol es lo más mantenible."
-          :actions="[{ label: 'Asignar rol', color: 'warning', variant: 'outline', to: `/usuarios/${data.user.id}` }]"
+          :actions="asignarRol(data.user.id)"
         />
 
         <UAlert
-          v-else-if="!data.inheritedAvailable"
+          v-else-if="data && !data.inheritedAvailable"
           color="warning"
           variant="subtle"
           icon="i-lucide-triangle-alert"
@@ -332,16 +332,16 @@ async function save() {
 
         <!-- Resumen: lo que importa aquí son las excepciones, no cuántos permisos hay -->
         <UserPermissionSummary
-          :user-name="userName"
-          :email="data.user.email"
-          :role-name="data.role?.name ?? null"
+          :user-name="data ? userName : 'Ningún usuario elegido'"
+          :email="data?.user.email"
+          :role-name="data?.role?.name ?? null"
           :inherited-count="editor.inheritedCount.value"
           :grant-count="editor.grantCount.value"
           :deny-count="editor.denyCount.value"
           :effective-count="editor.effectiveCount.value"
           :total="totalCombinations"
           :exception-count="editor.exceptionCount.value"
-          :disabled="saving"
+          :disabled="matrixDisabled"
           @reset-all="editor.resetAllToInherit"
         />
 
@@ -350,18 +350,18 @@ async function save() {
           icon="i-lucide-key-round"
           title="No hay módulos definidos"
           description="Los permisos se construyen sobre los módulos del sistema."
-          :actions="[{ label: 'Ir a módulos', icon: 'i-lucide-arrow-right', to: '/roles/modulos' }]"
+          :actions="irAModulos"
         />
 
         <UserPermissionModuleList
           v-else
           :modules="editor.modules.value"
           :actions="editor.actions.value"
-          :categories="data.categories"
+          :categories="catalog?.categories ?? []"
           :states="editor.statesByModule.value"
           :inherited="editor.inheritedByModule.value"
-          :disabled="saving"
-          @toggle="(moduleId, actionId, state) => editor.set(permissionKey(moduleId, actionId), state)"
+          :disabled="matrixDisabled"
+          @toggle="(moduleId, actionId, state) => editor.set(actionId, state)"
           @set-module="editor.setModule"
         />
 

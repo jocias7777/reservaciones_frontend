@@ -27,6 +27,19 @@ const emit = defineEmits<{
   toggle: [moduleId: string, actionId: string, value: boolean]
   toggleModule: [moduleId: string, value: boolean]
 }>()
+
+/**
+ * Cada tarjeta recibe SUS acciones, no todas.
+ *
+ * Una acción pertenece a un módulo, así que la matriz no es un producto de
+ * módulos por acciones: es cada módulo con las suyas. Se reparte aquí, una vez,
+ * en vez de que cada tarjeta filtre la lista completa.
+ */
+const actionsByModule = computed(() =>
+  Object.fromEntries(
+    props.modules.map(module => [module.id, actionsOfModule(props.actions, module.id)])
+  )
+)
 </script>
 
 <template>
@@ -40,7 +53,7 @@ const emit = defineEmits<{
       v-for="module in props.modules"
       :key="module.id"
       :module="module"
-      :actions="props.actions"
+      :actions="actionsByModule[module.id] ?? []"
       :categories="props.categories"
       :values="props.values[module.id] ?? {}"
       :inherited="props.inherited?.[module.id] ?? null"

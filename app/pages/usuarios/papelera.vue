@@ -83,7 +83,7 @@ const { rowSelection, selectedIds, restoring, restoreOne, restoreSelected } = us
       <template #actions>
         <UButton
           v-if="selectedIds.length && canRestoreMany"
-          :label="`Restaurar masivo (${selectedIds.length})`"
+          :label="`Restaurar (${selectedIds.length})`"
           icon="i-lucide-archive-restore"
           color="success"
           variant="subtle"

@@ -11,7 +11,7 @@
  */
 
 import type { Role } from './role'
-import type { User } from './user'
+import type { User, UserWithRelations } from './user'
 
 /**
  * Un módulo del sistema. En el backend la tabla se llama `sa_permissions`; aquí
@@ -87,24 +87,35 @@ export interface UpdateActionCategoryPayload {
   sort_order?: number
 }
 
-/** Acción disponible (tabla `sa_actions`). */
+/**
+ * Lo que se puede hacer EN UN MÓDULO (tabla `sa_actions`).
+ *
+ * `users.create` y `roles.create` son dos acciones distintas aunque compartan
+ * código: cada una pertenece a su módulo. Antes una acción era un verbo suelto
+ * y el permiso nacía al cruzarlo con un módulo, lo que hacía que el catálogo
+ * prometiera combinaciones que ningún endpoint comprueba.
+ */
 export interface Action {
   id: string
   code: string
   name: string
   description?: string | null
+  /** El módulo del que es. Es lo que reparte cada acción en su tarjeta. */
+  permission_id: string
   /** `null` = sin categoría: la interfaz la agrupa aparte, pero se concede igual. */
   category_id?: string | null
   created_at?: string
   updated_at?: string
-  // Solo presente si se pidió con `expand`.
+  // Solo presentes si se pidieron con `expand`.
   category?: Pick<ActionCategory, 'id' | 'name' | 'description' | 'icon'> | null
+  permission?: Pick<PermissionModule, 'id' | 'code' | 'name' | 'description'> | null
 }
 
-/** `POST /actions` exige `code` y `name`. */
+/** `POST /actions` exige `code`, `name` y el módulo al que pertenece. */
 export interface CreateActionPayload {
   code: string
   name: string
+  permission_id: string
   description?: string | null
   category_id?: string | null
 }
@@ -116,41 +127,43 @@ export interface UpdateActionPayload {
   category_id?: string | null
 }
 
+/**
+ * Lo que un rol puede hacer: (rol, acción).
+ *
+ * El módulo no viaja en la fila porque lo sabe la acción.
+ */
 export interface RolePermission {
   id: string
   role_id: string
-  permission_id: string
   action_id: string
   created_at: string
   updated_at?: string
-  // Solo presentes si se pidieron con `expand`.
+  // Solo presentes si se pidieron con `expand`. `permission` se resuelve a
+  // través de la acción.
   role?: Pick<Role, 'id' | 'name' | 'description'>
   permission?: Pick<PermissionModule, 'id' | 'code' | 'name' | 'description'>
-  action?: Pick<Action, 'id' | 'code' | 'name'>
+  action?: Pick<Action, 'id' | 'code' | 'name' | 'permission_id'>
 }
 
 export interface CreateRolePermissionPayload {
   role_id: string
-  permission_id: string
   action_id: string
 }
 
 export interface UserPermission {
   id: string
   user_id: string
-  permission_id: string
   action_id: string
   is_grant: boolean
   created_at: string
   updated_at?: string
   user?: Pick<User, 'id' | 'email' | 'username' | 'is_active'>
   permission?: Pick<PermissionModule, 'id' | 'code' | 'name' | 'description'>
-  action?: Pick<Action, 'id' | 'code' | 'name'>
+  action?: Pick<Action, 'id' | 'code' | 'name' | 'permission_id'>
 }
 
 export interface CreateUserPermissionPayload {
   user_id: string
-  permission_id: string
   action_id: string
   is_grant: boolean
 }
@@ -174,3 +187,55 @@ export interface UpdateUserPermissionPayload {
 
 /** Un elemento de `PUT /user-permissions/bulk/update`: la excepción a cambiar, por su id. */
 export type UserPermissionBulkUpdateItem = UpdateUserPermissionPayload & { id: string }
+
+/**
+ * Lo que devuelve guardar la matriz de un rol: cuántas combinaciones se
+ * concedieron, cuántas se revocaron y con cuántas quedó el rol.
+ */
+export interface RolePermissionSyncResult {
+  concedidas: number
+  revocadas: number
+  total: number
+}
+
+/**
+ * Lo que devuelve guardar las excepciones de un usuario. `eliminadas` son las
+ * que volvieron a heredar del rol; `actualizadas`, las que cambiaron de
+ * conceder a revocar o al revés.
+ */
+export interface UserPermissionSyncResult {
+  creadas: number
+  actualizadas: number
+  eliminadas: number
+  total: number
+}
+
+/**
+ * Todo lo necesario para DIBUJAR una matriz de permisos, en una sola respuesta.
+ *
+ * Los módulos son las filas, las acciones las columnas y las categorías los
+ * bloques en los que se agrupan esas columnas. Antes se pedía cada catálogo a
+ * su propio módulo, y cada uno exigía el `list` de ese módulo; ahora llega
+ * junto desde `GET /role-permissions/catalog` y `GET /user-permissions/catalog`,
+ * que piden `assign` —el mismo permiso que ya guarda la propia matriz—.
+ */
+export interface PermissionMatrixCatalog {
+  modules: PermissionModule[]
+  actions: Action[]
+  /** Vacío si todavía no hay ninguna: la matriz cae en un solo bloque. */
+  categories: ActionCategory[]
+}
+
+/** El catálogo de la matriz por rol: además, los roles del selector. */
+export interface RolePermissionCatalog extends PermissionMatrixCatalog {
+  roles: Role[]
+}
+
+/**
+ * El catálogo de la matriz por usuario: además, las personas del selector, con
+ * su rol y su perfil —de ahí salen el nombre y la foto con los que se las
+ * reconoce, y de qué rol heredan—.
+ */
+export interface UserPermissionCatalog extends PermissionMatrixCatalog {
+  users: UserWithRelations[]
+}

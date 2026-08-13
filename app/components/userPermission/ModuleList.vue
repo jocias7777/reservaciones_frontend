@@ -34,6 +34,17 @@ const emit = defineEmits<{
   setModule: [moduleId: string, state: OverrideState]
 }>()
 
+/**
+ * Cada tarjeta recibe SUS acciones, no todas: una acción pertenece a un módulo,
+ * así que la matriz es cada módulo con las suyas, no un producto de las dos
+ * listas. Se reparte aquí una vez, en vez de que cada tarjeta filtre el total.
+ */
+const actionsByModule = computed(() =>
+  Object.fromEntries(
+    props.modules.map(module => [module.id, actionsOfModule(props.actions, module.id)])
+  )
+)
+
 const query = ref('')
 const onlyExceptions = ref(false)
 
@@ -45,9 +56,10 @@ const modulesWithExceptions = computed(() =>
 )
 
 /**
- * Cualquier acción del catálogo existe en todos los módulos, así que buscar
- * «eliminar» deja ver todos los módulos con sus acciones de borrado a la vista.
- * Es la lectura útil: en qué módulos puede borrar este usuario.
+ * Si algún módulo tiene una acción que coincide, se dejan ver todos los que la
+ * tengan: buscar «eliminar» responde a «en qué módulos puede borrar este
+ * usuario», que es la lectura útil. Cada módulo decide después si él coincide,
+ * mirando solo SUS acciones.
  */
 const someActionMatches = computed(() =>
   props.actions.some(action => actionMatchesQuery(action, query.value))
@@ -124,6 +136,7 @@ function clearFilters() {
         placeholder="Buscar módulo o acción"
         class="w-full sm:w-64"
         aria-label="Buscar módulo o acción"
+        :disabled="props.disabled"
       >
         <template
           v-if="query"
@@ -148,7 +161,7 @@ function clearFilters() {
       <USwitch
         v-model="onlyExceptions"
         label="Solo con excepciones"
-        :disabled="!modulesWithExceptions.length"
+        :disabled="props.disabled || !modulesWithExceptions.length"
       />
 
       <UButton
@@ -157,7 +170,7 @@ function clearFilters() {
         color="neutral"
         variant="ghost"
         size="xs"
-        :disabled="!visibleModules.length"
+        :disabled="props.disabled || !visibleModules.length"
         @click="toggleAll"
       />
 
@@ -214,7 +227,7 @@ function clearFilters() {
       v-for="module in visibleModules"
       :key="module.id"
       :module="module"
-      :actions="props.actions"
+      :actions="actionsByModule[module.id] ?? []"
       :categories="props.categories"
       :states="props.states[module.id] ?? {}"
       :inherited="props.inherited[module.id] ?? {}"

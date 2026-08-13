@@ -10,20 +10,23 @@ const actionId = computed(() => String(route.params.id))
 
 const actionsApi = useActionsApi()
 const actionCategoriesApi = useActionCategoriesApi()
+const modulesApi = useModulesApi()
 const notify = useNotify()
 const { saving, save } = useSaveAction()
 
 const { data, status, error, refresh } = useAsyncData(
   () => `action:${actionId.value}`,
   async () => {
-    // La acción es lo que da sentido a la pantalla; las categorías solo pueblan
-    // un desplegable opcional, así que su falta de permiso no la tumba.
-    const [action, categories] = await Promise.all([
+    // La acción es lo que da sentido a la pantalla; las categorías y los
+    // módulos solo pueblan la referencia de solo lectura, así que su falta de
+    // permiso no la tumba.
+    const [action, categories, modules] = await Promise.all([
       actionsApi.get(actionId.value),
-      actionCategoriesApi.list().catch(() => [])
+      actionCategoriesApi.list().catch(() => []),
+      modulesApi.list().catch(() => [])
     ])
 
-    return { action, categories }
+    return { action, categories, modules }
   },
   { server: false, watch: [actionId] }
 )
@@ -87,6 +90,7 @@ function onSubmit(payload: CreateActionPayload) {
       :id="FORM_ID"
       :action="data.action"
       :categories="data.categories"
+      :modules="data.modules"
       @submit="onSubmit"
     />
   </BaseFormPage>

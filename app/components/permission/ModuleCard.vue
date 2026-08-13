@@ -93,6 +93,7 @@ const overrideCount = computed(() =>
         :icon="open ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
         color="neutral"
         variant="ghost"
+        :disabled="props.disabled"
         :aria-label="open ? `Ocultar acciones de ${props.module.name}` : `Mostrar acciones de ${props.module.name}`"
         @click="open = !open"
       />
