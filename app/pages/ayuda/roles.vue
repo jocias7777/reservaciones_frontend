@@ -50,6 +50,64 @@ useSeoMeta({ title: 'Roles · Cómo funciona' })
       >Permisos por rol</NuxtLink>.
     </p>
 
+    <HelpMockupFrame>
+      <div class="flex flex-wrap items-stretch gap-3">
+        <div class="min-w-0 flex-1 rounded-lg border border-default bg-default p-4">
+          <div class="flex items-center gap-2">
+            <HelpCalloutBadge :n="1" />
+            <p class="text-sm font-semibold text-highlighted">
+              Aquí: Roles
+            </p>
+          </div>
+          <div class="mt-3 space-y-2">
+            <UInput
+              placeholder="supervisor"
+              disabled
+              class="w-full"
+            />
+            <UInput
+              placeholder="Acceso de solo lectura a reportes"
+              disabled
+              class="w-full"
+            />
+          </div>
+        </div>
+
+        <div class="flex items-center px-1 text-dimmed">
+          <UIcon
+            name="i-lucide-arrow-right"
+            class="size-5"
+          />
+        </div>
+
+        <div class="min-w-0 flex-1 rounded-lg border border-default bg-default p-4">
+          <div class="flex items-center gap-2">
+            <HelpCalloutBadge :n="2" />
+            <p class="text-sm font-semibold text-highlighted">
+              Allá: Permisos por rol
+            </p>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+            <USwitch
+              :model-value="true"
+              label="Listar"
+            />
+            <USwitch
+              :model-value="false"
+              label="Crear"
+            />
+          </div>
+        </div>
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'En esta pantalla solo se le pone nombre y descripción al rol',
+          'Qué puede hacer ese rol se marca en otra pantalla, y se puede cambiar sin volver aquí'
+        ]"
+      />
+    </HelpMockupFrame>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
         Asignarle un rol a alguien no le copia los permisos: el usuario sigue leyendo lo que el rol tenga

@@ -35,6 +35,49 @@ useSeoMeta({ title: 'Módulos del sistema · Cómo funciona' })
       <code class="rounded bg-elevated px-1 py-0.5">require_permission('&lt;código&gt;', ...)</code>.
     </p>
 
+    <HelpMockupFrame>
+      <div class="space-y-3">
+        <div class="flex flex-wrap items-center gap-3 rounded-lg border border-default bg-default p-3">
+          <HelpCalloutBadge :n="1" />
+          <UBadge
+            label="users"
+            color="neutral"
+            variant="subtle"
+          />
+          <span class="text-sm text-highlighted">Usuarios</span>
+          <UBadge
+            label="En uso"
+            color="success"
+            variant="subtle"
+            class="ms-auto"
+          />
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 rounded-lg border border-default bg-default p-3">
+          <HelpCalloutBadge :n="2" />
+          <UBadge
+            label="reservations"
+            color="neutral"
+            variant="subtle"
+          />
+          <span class="text-sm text-highlighted">Reservaciones</span>
+          <UBadge
+            label="Sin uso en el código"
+            color="warning"
+            variant="subtle"
+            class="ms-auto"
+          />
+        </div>
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'Alguna ruta del backend ya exige permiso sobre este módulo: conceder o revocar aquí cambia algo de verdad',
+          'Todavía ninguna ruta lo comprueba: se puede marcar y desmarcar sin que nada cambie en la práctica'
+        ]"
+      />
+    </HelpMockupFrame>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
         Dar de alta un módulo aquí no restringe nada por sí solo: solo importa cuando alguna ruta del backend lo

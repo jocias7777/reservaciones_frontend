@@ -16,6 +16,58 @@ useSeoMeta({ title: 'Papelera y restaurar · Cómo funciona' })
       papelera y se puede recuperar desde ahí.
     </p>
 
+    <HelpMockupFrame>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="rounded-lg border border-default bg-default px-3 py-2">
+          <p class="text-xs text-dimmed">
+            Listado
+          </p>
+          <p class="text-sm text-highlighted">
+            Carlos Ruiz
+          </p>
+        </div>
+
+        <div class="flex items-center gap-1 text-xs text-muted">
+          <UIcon
+            name="i-lucide-arrow-right"
+            class="size-4"
+          />
+          Eliminar
+        </div>
+
+        <div class="rounded-lg border border-default bg-default px-3 py-2">
+          <p class="text-xs text-dimmed">
+            Papelera
+          </p>
+          <p class="text-sm text-muted line-through">
+            Carlos Ruiz
+          </p>
+        </div>
+
+        <div class="flex items-center gap-1 text-xs text-muted">
+          <UIcon
+            name="i-lucide-arrow-right"
+            class="size-4"
+          />
+          Restaurar
+        </div>
+
+        <div class="rounded-lg border border-default bg-default px-3 py-2">
+          <p class="text-xs text-dimmed">
+            Listado
+          </p>
+          <p class="text-sm text-highlighted">
+            Carlos Ruiz
+          </p>
+        </div>
+      </div>
+
+      <p class="mt-4 text-sm text-muted">
+        El registro es el mismo de principio a fin: vuelve con sus datos, su rol y su fecha de alta intactos. No
+        se vuelve a crear, se recupera.
+      </p>
+    </HelpMockupFrame>
+
     <div class="mt-6 space-y-4">
       <div class="rounded-lg border border-default p-4">
         <p class="font-medium text-highlighted">

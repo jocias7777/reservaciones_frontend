@@ -43,6 +43,71 @@ useSeoMeta({ title: 'Categorías de acciones · Cómo funciona' })
       los textos ya puestos.
     </p>
 
+    <HelpMockupFrame>
+      <div class="rounded-lg border border-default bg-default p-4">
+        <div class="flex items-center gap-2">
+          <HelpCalloutBadge :n="1" />
+          <UIcon
+            name="i-lucide-eye"
+            class="size-5 text-dimmed"
+          />
+          <div>
+            <p class="text-sm font-semibold text-highlighted">
+              Consulta
+            </p>
+            <p class="text-xs text-muted">
+              Ver y buscar información
+            </p>
+          </div>
+        </div>
+        <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 ps-7">
+          <HelpCalloutBadge :n="2" />
+          <USwitch
+            :model-value="true"
+            label="Listar"
+          />
+          <USwitch
+            :model-value="true"
+            label="Ver detalle"
+          />
+        </div>
+
+        <div class="mt-5 flex items-center gap-2">
+          <HelpCalloutBadge :n="3" />
+          <UIcon
+            name="i-lucide-pencil"
+            class="size-5 text-dimmed"
+          />
+          <div>
+            <p class="text-sm font-semibold text-highlighted">
+              Gestión
+            </p>
+            <p class="text-xs text-muted">
+              Crear y modificar registros
+            </p>
+          </div>
+        </div>
+        <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 ps-7">
+          <USwitch
+            :model-value="true"
+            label="Crear"
+          />
+          <USwitch
+            :model-value="false"
+            label="Editar"
+          />
+        </div>
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'La categoría se convierte en la cabecera de un bloque: su icono, su nombre y su descripción',
+          'Debajo caen las acciones que tiene asignadas, en vez de mezclarse todas en una sola lista',
+          'La siguiente categoría abre el siguiente bloque, en el orden que se les haya puesto'
+        ]"
+      />
+    </HelpMockupFrame>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
         Es solo organización visual: no otorga ni quita nada por sí misma, ni afecta a qué puede acceder un rol o

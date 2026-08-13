@@ -59,6 +59,80 @@ useSeoMeta({ title: 'Usuarios · Cómo funciona' })
       <li>Foto — se recorta en cuadrado y se comprime en el propio navegador antes de guardarse; no hay endpoint de subida de archivos todavía.</li>
     </ul>
 
+    <HelpMockupFrame>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="rounded-lg border border-default bg-default p-4">
+          <div class="flex items-center gap-2">
+            <HelpCalloutBadge :n="1" />
+            <p class="text-sm font-semibold text-highlighted">
+              Cuenta
+            </p>
+          </div>
+          <div class="mt-3 space-y-2">
+            <UInput
+              placeholder="ana.martinez@empresa.com"
+              disabled
+              class="w-full"
+            />
+            <UInput
+              placeholder="••••••••"
+              disabled
+              class="w-full"
+            />
+            <UInput
+              placeholder="Supervisor"
+              icon="i-lucide-shield"
+              disabled
+              class="w-full"
+            />
+            <USwitch
+              :model-value="true"
+              label="Cuenta activa"
+            />
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-default bg-default p-4">
+          <div class="flex items-center gap-2">
+            <HelpCalloutBadge :n="2" />
+            <p class="text-sm font-semibold text-highlighted">
+              Perfil
+            </p>
+          </div>
+          <div class="mt-3 flex items-start gap-3">
+            <UAvatar
+              icon="i-lucide-user"
+              size="lg"
+            />
+            <div class="min-w-0 flex-1 space-y-2">
+              <UInput
+                placeholder="Ana"
+                disabled
+                class="w-full"
+              />
+              <UInput
+                placeholder="Martínez"
+                disabled
+                class="w-full"
+              />
+              <UInput
+                placeholder="+52 55 1234 5678"
+                disabled
+                class="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'Cuenta — con qué inicia sesión y qué rol tiene; sin esto no entra al sistema',
+          'Perfil — sus datos personales, todos opcionales: la cuenta funciona igual sin ellos'
+        ]"
+      />
+    </HelpMockupFrame>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
         El estado activo/inactivo y el rol son cosas separadas: una cuenta inactiva no puede iniciar sesión

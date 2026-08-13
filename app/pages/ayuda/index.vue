@@ -48,6 +48,18 @@ const steps: PermissionStep[] = [
     ]
   }
 ]
+
+/**
+ * El mismo recorrido de arriba, pero resuelto sobre una persona concreta: es
+ * la forma más rápida de ver por qué una excepción le gana al rol y por qué
+ * «Hereda» no significa «permitido».
+ */
+const ejemplo = [
+  { accion: 'Listar', rol: 'Marcado', excepcion: 'Hereda', permite: true, porque: 'Sin excepción, manda el rol' },
+  { accion: 'Crear', rol: 'Marcado', excepcion: 'Revoca', permite: false, porque: 'La excepción gana al rol' },
+  { accion: 'Eliminar', rol: 'Sin marcar', excepcion: 'Hereda', permite: false, porque: 'Sin excepción, manda el rol' },
+  { accion: 'Restaurar', rol: 'Sin marcar', excepcion: 'Concede', permite: true, porque: 'La excepción gana al rol' }
+]
 </script>
 
 <template>
@@ -98,6 +110,63 @@ const steps: PermissionStep[] = [
         </div>
       </li>
     </ol>
+
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      Los tres pasos, sobre un caso concreto
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Ana tiene el rol «Supervisor», que en Usuarios concede Listar y Crear, pero no Eliminar ni Restaurar. Además
+      tiene dos excepciones propias. Esto es lo que puede hacer al final:
+    </p>
+
+    <HelpMockupFrame>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-125 text-sm">
+          <thead>
+            <tr class="border-b border-default text-left text-xs uppercase tracking-wide text-dimmed">
+              <th class="pb-2 pe-4 font-medium">
+                Acción
+              </th>
+              <th class="pb-2 pe-4 font-medium">
+                Su rol
+              </th>
+              <th class="pb-2 pe-4 font-medium">
+                Su excepción
+              </th>
+              <th class="pb-2 font-medium">
+                Resultado
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="fila in ejemplo"
+              :key="fila.accion"
+              class="border-b border-default last:border-0"
+            >
+              <td class="py-3 pe-4 font-medium text-highlighted">
+                {{ fila.accion }}
+              </td>
+              <td class="py-3 pe-4 text-muted">
+                {{ fila.rol }}
+              </td>
+              <td class="py-3 pe-4 text-muted">
+                {{ fila.excepcion }}
+              </td>
+              <td class="py-3">
+                <UBadge
+                  :label="fila.permite ? 'Puede' : 'No puede'"
+                  :color="fila.permite ? 'success' : 'error'"
+                  variant="subtle"
+                  size="sm"
+                />
+                <span class="ms-2 text-xs text-dimmed">{{ fila.porque }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </HelpMockupFrame>
 
     <UAlert
       color="neutral"

@@ -64,6 +64,73 @@ useSeoMeta({ title: 'Permisos por usuario · Cómo funciona' })
       <li>El pie de guardar solo aparece con cambios pendientes.</li>
     </ol>
 
+    <HelpMockupFrame>
+      <div class="rounded-lg border border-default bg-default p-4">
+        <div class="flex items-center gap-2">
+          <HelpCalloutBadge :n="1" />
+          <UAvatar
+            icon="i-lucide-user"
+            size="sm"
+          />
+          <p class="text-sm font-medium text-highlighted">
+            Ana Martínez
+          </p>
+          <UBadge
+            label="Supervisor"
+            color="neutral"
+            variant="subtle"
+          />
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+          <HelpCalloutBadge :n="2" />
+          <div>
+            <p class="text-lg font-semibold text-highlighted">
+              41
+            </p>
+            <p class="text-xs text-muted">
+              Hereda
+            </p>
+          </div>
+          <div>
+            <p class="text-lg font-semibold text-highlighted">
+              4
+            </p>
+            <p class="text-xs text-muted">
+              Concede
+            </p>
+          </div>
+          <div>
+            <p class="text-lg font-semibold text-highlighted">
+              3
+            </p>
+            <p class="text-xs text-muted">
+              Revoca
+            </p>
+          </div>
+          <div class="ms-auto flex items-center gap-3">
+            <HelpCalloutBadge :n="3" />
+            <div>
+              <p class="text-lg font-semibold text-highlighted">
+                15
+              </p>
+              <p class="text-xs text-muted">
+                Puede hacer en total
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'La persona elegida y el rol del que hereda',
+          'Cuántas acciones deja como estén, cuántas concede a mano y cuántas bloquea a mano',
+          'Lo efectivo: lo que de verdad puede hacer una vez aplicadas sus excepciones sobre el rol'
+        ]"
+      />
+    </HelpMockupFrame>
+
     <h2 class="mt-10 text-lg font-semibold text-highlighted">
       Avisos que pueden salir
     </h2>
@@ -83,11 +150,12 @@ useSeoMeta({ title: 'Permisos por usuario · Cómo funciona' })
         <NuxtLink
           to="/ayuda/permisos-por-rol"
           class="text-primary underline"
-        >Permisos por rol</NuxtLink>, aquí también exige «Asignar permisos» de su propio módulo.
+        >Permisos por rol</NuxtLink>, con «Asignar permisos» de su propio módulo basta para todo: entrar, ver los
+        catálogos y guardar.
       </li>
       <li>
-        Al guardar, lo que vuelve a «Hereda» se revoca, lo nuevo se concede o bloquea, y lo que ya era una
-        excepción solo se ajusta — tres llamadas distintas según lo que haga falta, ninguna atómica.
+        Guardar manda las excepciones tal y como quedaron en pantalla, en una sola petición: lo que volvió a
+        «Hereda» deja de tener fila, y lo demás se concede o se bloquea. Entra entero o no entra nada.
       </li>
     </ul>
   </HelpDocsPage>

@@ -12,8 +12,9 @@ useSeoMeta({ title: 'Acciones · Cómo funciona' })
       Acciones
     </h1>
     <p class="mt-3 text-muted">
-      Los verbos que se pueden hacer sobre un módulo: listar, crear, editar, eliminar, restaurar, asignar... Cada
-      permiso es la combinación de un módulo con una acción.
+      Lo que se puede hacer en cada módulo: listar, crear, editar, eliminar, restaurar... Cada acción pertenece a
+      un módulo, así que «Crear» en Usuarios y «Crear» en Roles son dos permisos distintos, y por eso el catálogo
+      tiene una fila por cada par.
     </p>
 
     <h2 class="mt-10 text-lg font-semibold text-highlighted">
@@ -24,8 +25,9 @@ useSeoMeta({ title: 'Acciones · Cómo funciona' })
     </p>
     <ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-muted">
       <li><strong class="text-highlighted">Acción</strong> — nombre visible y código debajo.</li>
+      <li><strong class="text-highlighted">Módulo</strong> — a cuál pertenece. Es lo que distingue dos acciones que se llaman igual.</li>
       <li><strong class="text-highlighted">Categoría</strong> — el bloque en el que aparece, o «Sin categoría».</li>
-      <li><strong class="text-highlighted">Efecto real</strong> — en cuántos módulos la comprueba de verdad el backend (con el detalle en el tooltip), o «Todavía sin efecto» si ninguno lo hace aún.</li>
+      <li><strong class="text-highlighted">Efecto real</strong> — «En uso» si el backend la comprueba de verdad en su módulo, o «Todavía sin efecto» si ninguna ruta lo hace aún.</li>
       <li><strong class="text-highlighted">Descripción</strong>.</li>
     </ul>
     <p class="mt-3 text-sm text-muted">
@@ -42,6 +44,53 @@ useSeoMeta({ title: 'Acciones · Cómo funciona' })
       <li><strong class="text-highlighted">Categoría</strong> — obligatoria: el bloque en el que caerá.</li>
       <li><strong class="text-highlighted">Descripción</strong> — opcional, se muestra junto al interruptor de la acción.</li>
     </ul>
+
+    <HelpMockupFrame>
+      <div class="space-y-3">
+        <div class="flex flex-wrap items-center gap-3 rounded-lg border border-default bg-default p-3">
+          <HelpCalloutBadge :n="1" />
+          <div class="min-w-0">
+            <p class="text-sm text-highlighted">
+              Listar
+            </p>
+            <p class="text-xs text-muted">
+              list
+            </p>
+          </div>
+          <UBadge
+            label="En 7 módulos"
+            color="success"
+            variant="subtle"
+            class="ms-auto"
+          />
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 rounded-lg border border-default bg-default p-3">
+          <HelpCalloutBadge :n="2" />
+          <div class="min-w-0">
+            <p class="text-sm text-highlighted">
+              Exportar
+            </p>
+            <p class="text-xs text-muted">
+              export · Usuarios
+            </p>
+          </div>
+          <UBadge
+            label="Todavía sin efecto"
+            color="warning"
+            variant="subtle"
+            class="ms-auto"
+          />
+        </div>
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'El backend ya comprueba esta acción en su módulo: marcarla o desmarcarla cambia algo de verdad',
+          'Ninguna ruta de ese módulo la comprueba todavía: existe en el catálogo, pero no bloquea nada'
+        ]"
+      />
+    </HelpMockupFrame>
 
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>

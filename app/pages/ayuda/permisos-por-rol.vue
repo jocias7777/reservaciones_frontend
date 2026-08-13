@@ -26,18 +26,67 @@ useSeoMeta({ title: 'Permisos por rol · Cómo funciona' })
       <li>El pie de guardar solo aparece con cambios pendientes, y dice cuántos se van a conceder y cuántos a revocar.</li>
     </ol>
 
+    <HelpMockupFrame>
+      <div class="flex flex-wrap items-center gap-4 rounded-lg border border-default bg-default p-4">
+        <HelpCalloutBadge :n="1" />
+        <div>
+          <p class="text-sm font-semibold text-highlighted">
+            Supervisor
+          </p>
+          <p class="text-xs text-muted">
+            12 de 92 permisos · 7 módulos · 14 acciones
+          </p>
+        </div>
+        <UButton
+          label="Marcar todo"
+          color="neutral"
+          variant="subtle"
+          size="sm"
+          class="ms-auto"
+        />
+      </div>
+
+      <div class="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-default bg-default p-3">
+        <HelpCalloutBadge :n="2" />
+        <UBadge
+          label="+3 conceder"
+          color="success"
+          variant="subtle"
+        />
+        <UBadge
+          label="−1 revocar"
+          color="error"
+          variant="subtle"
+        />
+        <UButton
+          label="Guardar cambios"
+          color="primary"
+          size="sm"
+          class="ms-auto"
+        />
+      </div>
+
+      <HelpCalloutLegend
+        :items="[
+          'El resumen del rol elegido: cuántos permisos tiene activos de su total, y en cuántos módulos y acciones',
+          'El pie solo aparece con cambios pendientes, y separa lo que se va a conceder de lo que se va a revocar'
+        ]"
+      />
+    </HelpMockupFrame>
+
     <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
-        Exige el permiso «Asignar permisos» de este mismo módulo, no «Listar»: así se puede dejar administrar la
-        matriz sin dar acceso a la búsqueda avanzada sobre la tabla completa de asignaciones.
+        Con «Asignar permisos» de este mismo módulo basta: ni «Listar» aquí, ni el listado de módulos, acciones,
+        categorías o roles. Esta pantalla pide sus catálogos con ese mismo permiso, así que se puede dejar
+        administrar la matriz sin abrir de paso ninguna otra pantalla del menú.
       </li>
       <li>
-        Guardar solo toca lo que cambió: lo quitado se revoca en una sola llamada, lo agregado se concede en
-        otra — no una petición por casilla.
+        Guardar manda el cuadro completo tal y como quedó en pantalla, en una sola petición, y el servidor calcula
+        la diferencia contra lo que tenía.
       </li>
       <li>
-        Ninguna de las dos llamadas es atómica: si una combinación falla (por ejemplo, por un duplicado suelto),
-        no cancela el resto del lote. El aviso dice cuántas fallaron y por qué.
+        Se guarda entero o no se guarda nada: si algo falla a media tanda, el rol se queda exactamente como
+        estaba, sin la mitad de los cambios aplicados.
       </li>
       <li>
         Guardar refresca de inmediato los permisos de quien lo hizo, para que los botones que dependen de este
