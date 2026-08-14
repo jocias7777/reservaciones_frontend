@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import type { UserPermission } from '~/types'
-
 definePageMeta({
   layout: 'app'
 })
 
-const rolePermissionsApi = useRolePermissionsApi()
 const userPermissionsApi = useUserPermissionsApi()
 const notify = useNotify()
 const access = useAccessControl()
@@ -65,37 +62,28 @@ const { data, status, error, refresh } = useAsyncData(
     const user = users.value.find(candidate => candidate.id === userId)
     if (!user) return null
 
-    // Sin poder leer las excepciones no se puede editar nada sin riesgo de
-    // pisar lo que ya hubiera guardado, así que se distingue el 403 para
-    // explicarlo en pantalla en vez de fallar la carga entera.
-    let overrides: UserPermission[] = []
+    // `inherited` viene en la MISMA llamada que las excepciones (ver
+    // `useUserPermissionsApi.listByUser`): antes hacía falta pedir
+    // `role-permissions` aparte para saber qué hereda del rol, y eso exigía
+    // un permiso más solo para pintar la matriz. Si esta llamada falla, las
+    // dos cosas fallan juntas —no hay ya una referencia heredada "de
+    // respaldo" que pedir por otro lado—.
+    let matrix: Awaited<ReturnType<typeof userPermissionsApi.listByUser>> | null = null
     let overridesForbidden = false
 
     try {
-      overrides = await userPermissionsApi.listByUser(userId)
+      matrix = await userPermissionsApi.listByUser(userId)
     } catch (err) {
       if (apiErrorStatus(err) !== 403) throw err
       overridesForbidden = true
     }
 
-    // Lo que otorga su rol. Si la cuenta que está editando no puede leer
-    // `role-permissions`, se sigue trabajando sin la referencia heredada.
-    let inheritedKeys: string[] = []
-    let inheritedAvailable = true
-
-    if (user.role_id) {
-      try {
-        const rows = await rolePermissionsApi.listByRole(user.role_id)
-        inheritedKeys = rows.map(row => row.action_id)
-      } catch {
-        inheritedAvailable = false
-      }
-    }
-
     return {
       user,
       role: user.role ?? null,
-      overrides, overridesForbidden, inheritedKeys, inheritedAvailable
+      overrides: matrix?.overrides ?? [],
+      overridesForbidden,
+      inheritedKeys: matrix?.inherited ?? []
     }
   },
   // El catálogo trae al usuario elegido, así que hay que reintentar cuando
@@ -319,15 +307,6 @@ async function save() {
           title="Este usuario no tiene rol"
           description="Sin rol no hereda nada: el tooltip de «Hereda» dirá que no en todo, y lo único que le dará permisos son las excepciones que marques aquí. Asignarle un rol es lo más mantenible."
           :actions="asignarRol(data.user.id)"
-        />
-
-        <UAlert
-          v-else-if="data && !data.inheritedAvailable"
-          color="warning"
-          variant="subtle"
-          icon="i-lucide-triangle-alert"
-          title="No se pudo leer lo que otorga el rol"
-          description="Falta el permiso `assign` sobre los permisos de rol, así que el tooltip de «Hereda» y lo que se ve atenuado en cada acción no son fiables en esta pantalla. Lo que guardes se aplicará igual."
         />
 
         <!-- Resumen: lo que importa aquí son las excepciones, no cuántos permisos hay -->

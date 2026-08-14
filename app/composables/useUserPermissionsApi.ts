@@ -4,6 +4,7 @@ import type {
   UserPermission,
   UserPermissionBulkUpdateItem,
   UserPermissionCatalog,
+  UserPermissionMatrix,
   UserPermissionSyncResult
 } from '~/types'
 
@@ -19,17 +20,23 @@ export function useUserPermissionsApi() {
 
   return {
     /**
-     * `GET /user-permissions/by-user/:userId` — todas las excepciones activas
-     * de un usuario, sin papelera. Exige `assign`, no `list`: editar las
-     * excepciones de una persona no debería obligar a darle acceso a la
-     * búsqueda avanzada sobre la tabla entera de excepciones.
+     * `GET /user-permissions/by-user/:userId` — las excepciones activas del
+     * usuario (sin papelera), CON lo que su rol concede ya resuelto en
+     * `inherited`. Exige `assign`, no `list`: editar las excepciones de una
+     * persona no debería obligar a darle acceso a la búsqueda avanzada sobre
+     * la tabla entera de excepciones.
+     *
+     * `inherited` viaja aquí y no en una llamada aparte a
+     * `role-permissions/by-role` a propósito: antes, pintar «Hereda» en la
+     * matriz exigía TAMBIÉN ese permiso, y quien solo administra excepciones
+     * de usuario no tiene por qué poder ver la matriz de roles.
      *
      * Sin paginación de por medio —reemplaza al viejo `QUERY` recorrido
      * página a página— porque el propio backend ya devuelve el conjunto
      * completo.
      */
     listByUser: (userId: string) =>
-      unwrap(api<ApiEnvelope<UserPermission[]>>(`/user-permissions/by-user/${userId}`)),
+      unwrap(api<ApiEnvelope<UserPermissionMatrix>>(`/user-permissions/by-user/${userId}`)),
 
     /**
      * `GET /user-permissions/catalog` — el gemelo del de rol: módulos,

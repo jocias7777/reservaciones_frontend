@@ -40,18 +40,14 @@ export function useAuth() {
   }
 
   /**
-   * `POST /auth/logout`. Invalida el refresh token en el backend; la sesión
+   * `POST /auth/logout`. El backend lee el refresh token de su cookie
+   * httpOnly (ya no se manda en el cuerpo, SEC-002) y lo invalida; la sesión
    * local se limpia aunque la llamada falle (el token de acceso puede haber
    * expirado y el usuario espera salir de todos modos).
    */
   async function logout() {
     try {
-      if (session.refreshToken.value) {
-        await api('/auth/logout', {
-          method: 'POST',
-          body: { refresh_token: session.refreshToken.value }
-        })
-      }
+      await api('/auth/logout', { method: 'POST' })
     } catch {
       // Sin ruido: la sesión se cierra igual en el cliente.
     } finally {

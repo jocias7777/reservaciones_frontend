@@ -87,6 +87,11 @@ export default defineNuxtPlugin(() => {
 
   const http = $fetch.create({
     baseURL,
+    // El refresh token ya no lo maneja este código (SEC-002): va en la cookie
+    // httpOnly que pone el backend, y el navegador solo la manda si se pide
+    // explícitamente. Las peticiones normales no la necesitan —solo llevan el
+    // access token por cabecera— pero no está de más dejarlo consistente.
+    credentials: 'include',
     onRequest({ options }) {
       if (session.accessToken.value) {
         options.headers.set('Authorization', `Bearer ${session.accessToken.value}`)
@@ -94,17 +99,17 @@ export default defineNuxtPlugin(() => {
     }
   }) as unknown as ApiClient
 
+  /**
+   * Renueva la sesión. Ya no hace falta comprobar si "hay" refresh token: el
+   * navegador lo manda solo, en su cookie httpOnly, y si no hay ninguna el
+   * backend responde 400/401 igual que antes.
+   */
   async function renewSession(): Promise<boolean> {
-    if (!session.refreshToken.value) return false
-
     try {
-      // El backend espera el refresh token en la cabecera (`@jwt_required(refresh=True)`)
-      // y también en el cuerpo, donde comprueba que siga activo en base de datos.
       const response = await $fetch<RefreshResponse>('/auth/refresh', {
         baseURL,
         method: 'POST',
-        headers: { Authorization: `Bearer ${session.refreshToken.value}` },
-        body: { refresh_token: session.refreshToken.value }
+        credentials: 'include'
       })
       session.setTokens(response)
       return true
@@ -128,7 +133,11 @@ export default defineNuxtPlugin(() => {
     } catch (error) {
       const isAuthCall = typeof request === 'string' && request.startsWith('/auth/')
 
-      if (!isTokenProblem(error) || isAuthCall || !session.refreshToken.value) {
+      // Ya no se puede saber de antemano si "hay" refresh token: vive en una
+      // cookie httpOnly que este código no puede leer. Si no hay ninguna, o ya
+      // no sirve, `renewSessionOnce` simplemente falla y cae al `session.clear()`
+      // de abajo — un intento de más no tiene costo real.
+      if (!isTokenProblem(error) || isAuthCall) {
         throw error
       }
 

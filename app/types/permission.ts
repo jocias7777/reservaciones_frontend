@@ -169,6 +169,24 @@ export interface CreateUserPermissionPayload {
 }
 
 /**
+ * `GET /user-permissions/by-user/:userId` — las excepciones del usuario, con
+ * lo que su ROL concede ya resuelto del lado del servidor.
+ *
+ * Antes esto obligaba a pedir `role-permissions` aparte para pintar «Hereda»
+ * en la matriz, y por lo tanto a tener ese permiso además de
+ * `user_permissions`. Al venir `inherited` en la misma respuesta, con
+ * `user_permissions:assign` alcanza para ver todo lo necesario.
+ */
+export interface UserPermissionMatrix {
+  user_id: string
+  /** `null` si el usuario no tiene rol, o si el que tenía fue dado de baja. */
+  role: Pick<Role, 'id' | 'name'> | null
+  /** Ids de acción que concede el rol. */
+  inherited: string[]
+  overrides: UserPermission[]
+}
+
+/**
  * Los tres estados de una celda módulo × acción en los permisos de un usuario.
  *
  * Un interruptor solo sabe representar dos, y por eso no distingue "lo hereda de

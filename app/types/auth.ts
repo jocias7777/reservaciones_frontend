@@ -15,17 +15,20 @@ export interface SessionUser {
   is_active?: boolean
 }
 
-/** `POST /auth/login` responde sin envoltorio `{ data }`. */
+/**
+ * `POST /auth/login` responde sin envoltorio `{ data }`.
+ *
+ * El refresh token ya no viaja aquí (SEC-002): sale en una cookie httpOnly que
+ * este código nunca lee, solo el navegador la reenvía.
+ */
 export interface LoginResponse {
   access_token: string
-  refresh_token: string
   user: SessionUser
 }
 
-/** `POST /auth/refresh` responde sin envoltorio `{ data }`. */
+/** `POST /auth/refresh` responde sin envoltorio `{ data }`. Mismo motivo. */
 export interface RefreshResponse {
   access_token: string
-  refresh_token: string
 }
 
 /** `GET /auth/me` responde sin envoltorio `{ data }`. */
