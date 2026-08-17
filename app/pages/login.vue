@@ -112,9 +112,9 @@ const submitLabel = computed(() => retrySubmitLabel('Iniciar sesión'))
       <template #footer>
         <div class="space-y-2 text-sm text-muted text-center">
           <p>
-            <ULink to="/forgot-password">
+            <BaseAuthLink to="/forgot-password">
               Olvidé mi contraseña
-            </ULink>
+            </BaseAuthLink>
           </p>
           <p>
             Si no tienes acceso, pide a un administrador que cree tu usuario.

@@ -104,10 +104,11 @@ const submitLabel = computed(() => retrySubmitLabel('Enviarme el enlace'))
             title="Revisa tu correo"
           />
 
-          <p class="text-sm text-muted text-center">
-            <ULink to="/login">
-              Volver al acceso
-            </ULink>
+          <!-- Apunta a `/login`: el inicio para quien todavía no ha entrado. -->
+          <p class="text-sm text-center">
+            <BaseAuthLink to="/login">
+              Volver al inicio
+            </BaseAuthLink>
           </p>
         </div>
       </template>

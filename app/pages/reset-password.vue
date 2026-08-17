@@ -156,10 +156,10 @@ const submitLabel = computed(() => retrySubmitLabel('Guardar contraseña'))
       @submit="onSubmit"
     >
       <template #footer>
-        <p class="text-sm text-muted text-center">
-          <ULink to="/login">
-            Volver al acceso
-          </ULink>
+        <p class="text-sm text-center">
+          <BaseAuthLink to="/login">
+            Volver al inicio
+          </BaseAuthLink>
         </p>
       </template>
     </UAuthForm>
