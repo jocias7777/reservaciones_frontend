@@ -271,10 +271,10 @@ const exceptionLabel = computed(() =>
                   </UTooltip>
 
                   <UIcon
-                    v-if="isIrreversibleAction(action)"
+                    v-if="actionWarning(action)"
                     name="i-lucide-triangle-alert"
                     class="size-4 shrink-0 text-error"
-                    aria-label="Acción irreversible"
+                    :aria-label="actionWarning(action)"
                   />
 
                   <span class="sr-only">{{ outcomeText(action.id) }}</span>

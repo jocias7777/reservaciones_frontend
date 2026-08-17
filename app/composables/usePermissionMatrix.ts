@@ -106,6 +106,17 @@ export function usePermissionMatrix(options: UsePermissionMatrixOptions) {
   }
 
   /**
+   * El mensaje de un error de guardado, listo para mostrar.
+   *
+   * Vive aquí y no en la pantalla porque lo que hace falta para traducirlo —el
+   * catálogo de módulos y acciones— ya está aquí. Ver `describeActionIds`: los
+   * 403 de la política de delegación citan las acciones por id.
+   */
+  function describeError(error: unknown): string {
+    return describeActionIds(apiErrorMessage(error), actions.value, modules.value)
+  }
+
+  /**
    * Reparte un conjunto de claves en el formato que consumen las tarjetas:
    * `{ [moduleId]: { [actionId]: boolean } }`.
    */
@@ -146,6 +157,7 @@ export function usePermissionMatrix(options: UsePermissionMatrixOptions) {
     setModule,
     setAll,
     setBaseline,
-    reset
+    reset,
+    describeError
   }
 }

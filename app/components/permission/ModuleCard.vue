@@ -155,7 +155,7 @@ const overrideCount = computed(() =>
             >
               <USwitch
                 :model-value="Boolean(props.values[action.id])"
-                :color="isIrreversibleAction(action) ? 'error' : 'primary'"
+                :color="actionWarning(action) ? 'error' : 'primary'"
                 :disabled="props.disabled"
                 :aria-label="`${actionLabel(action)} en ${props.module.name}`"
                 @update:model-value="emit('toggle', action.id, $event)"

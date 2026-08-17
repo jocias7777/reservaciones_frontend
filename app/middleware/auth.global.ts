@@ -1,5 +1,15 @@
-/** Rutas que no exigen sesión: el acceso y la demo de la plantilla. */
-const PUBLIC_ROUTES = new Set(['/login', '/plantilla'])
+/**
+ * Rutas que no exigen sesión: el acceso, la recuperación de contraseña y la demo
+ * de la plantilla.
+ *
+ * Las dos de recuperación tienen que ser públicas por definición —se llega a
+ * ellas justo cuando no se puede entrar—, y `/reset-password` además se abre
+ * desde el enlace de un correo, así que puede caer con una sesión vieja todavía
+ * activa en el navegador. A diferencia de `/login`, esa sesión NO es motivo para
+ * echar a nadie de aquí: restablecer la contraseña es válido igual, y de hecho
+ * el backend invalida todas las sesiones al hacerlo.
+ */
+const PUBLIC_ROUTES = new Set(['/login', '/forgot-password', '/reset-password', '/plantilla'])
 
 /** Con sesión pero sin permisos, esta es la única pantalla que queda. */
 const NO_ACCESS_ROUTE = '/sin-acceso'

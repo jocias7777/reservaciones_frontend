@@ -13,11 +13,17 @@ export function useNotify() {
       toast.add({ title, description, color: 'success', icon: 'i-lucide-circle-check' })
     },
 
-    /** Muestra el mensaje que devolvió el backend, o `title` si no hubo respuesta. */
-    error(error: unknown, title = 'Algo salió mal') {
+    /**
+     * Muestra el mensaje que devolvió el backend, o `title` si no hubo respuesta.
+     *
+     * `description` lo sustituye cuando la pantalla sabe decirlo mejor: las
+     * matrices de permisos traducen a nombres los ids de acción que el backend
+     * cita en los errores de delegación (ver `describeActionIds`).
+     */
+    error(error: unknown, title = 'Algo salió mal', description?: string) {
       toast.add({
         title,
-        description: apiErrorMessage(error),
+        description: description ?? apiErrorMessage(error),
         color: 'error',
         icon: 'i-lucide-circle-alert'
       })

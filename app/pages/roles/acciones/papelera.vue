@@ -29,7 +29,7 @@ const {
   key: 'actions:trash',
   fetcher: query => actionsApi.trash(query),
   searchFields: ['code', 'name', 'description'],
-  expand: ['category'],
+  expand: ['category', 'permission'],
   sortBy: 'code',
   sortOrder: 'ASC'
 })
@@ -37,6 +37,10 @@ const {
 const columns: TableColumn<Action>[] = [
   { id: 'select' },
   { accessorKey: 'name', header: 'Acción' },
+  // Igual que en el listado: desde que cada acción pertenece a un módulo, hay
+  // una «Crear» por módulo, y sin esta columna la papelera parece llena de
+  // duplicados y no se sabe cuál se está recuperando.
+  { accessorKey: 'permission', header: 'Módulo' },
   { accessorKey: 'category', header: 'Categoría' },
   { accessorKey: 'description', header: 'Descripción' },
   { id: 'row-actions' }
@@ -129,6 +133,20 @@ const { rowSelection, selectedIds, restoring, restoreOne, restoreSelected } = us
             <span class="text-xs text-muted">{{ row.original.code }}</span>
           </div>
         </div>
+      </template>
+
+      <template #permission-cell="{ row }">
+        <UBadge
+          v-if="row.original.permission"
+          :label="row.original.permission.name"
+          color="neutral"
+          variant="subtle"
+          :icon="moduleIcon(row.original.permission)"
+        />
+        <span
+          v-else
+          class="text-sm text-muted"
+        >—</span>
       </template>
 
       <template #category-cell="{ row }">

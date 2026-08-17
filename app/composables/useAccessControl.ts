@@ -58,6 +58,19 @@ const PERMISSIONS_ENDPOINT = '/auth/me/permissions'
  */
 const PROBE_ID = '00000000-0000-0000-0000-000000000000'
 
+/**
+ * `objeto[campo]` si el objeto trae ese campo, o el objeto tal cual si no.
+ *
+ * Pela los envoltorios de la respuesta (`data`, `permissions`) sin romperse
+ * cuando alguno no está, que es lo que permite leer tanto la forma que publica
+ * hoy el backend como el mapa plano.
+ */
+function unwrapField(payload: unknown, field: string): unknown {
+  if (!payload || typeof payload !== 'object' || !(field in payload)) return payload
+
+  return (payload as Record<string, unknown>)[field]
+}
+
 export function useAccessControl() {
   const api = useApi()
   const session = useAuthSession()
@@ -116,15 +129,22 @@ export function useAccessControl() {
   /**
    * Convierte lo que publica el backend en el mapa que se usa aquí.
    *
-   * Se acepta tanto con el envoltorio `{ data }` como sin él, porque es un
-   * endpoint nuevo y no conviene atarse a un detalle de forma. Si lo que llega
-   * no encaja —o llega vacío— se devuelve `null` y se pasa a deducirlo
-   * probando: más vale una vuelta de más que dejar a alguien fuera de su
-   * aplicación por una respuesta que no supimos leer.
+   * `GET /auth/me/permissions` responde
+   * `{ role, is_superadmin, permissions, overrides }`
+   * (`app/main/routes.py::me_permissions`): el mapa de módulos × acciones viaja
+   * DENTRO de `permissions`, no en la raíz. Los otros tres campos son para
+   * diagnosticar —`overrides` dice qué excepción concreta le quita a alguien
+   * algo que su rol sí concede— y aquí no hacen falta: `permissions` ya llega
+   * con el rol, las excepciones y el bypass del superadmin resueltos.
+   *
+   * Se sigue aceptando el mapa plano en la raíz, y con o sin el envoltorio
+   * `{ data }`: no cuesta nada y ninguna de las dos formas está garantizada.
+   * Si lo que llega no encaja —o llega vacío— se devuelve `null` y se pasa a
+   * deducirlo probando: más vale una vuelta de más que dejar a alguien fuera de
+   * su aplicación por una respuesta que no supimos leer.
    */
   function toGrantedMap(payload: unknown): Record<string, boolean> | null {
-    const envelope = payload as { data?: unknown } | null
-    const raw = (envelope && typeof envelope === 'object' && 'data' in envelope ? envelope.data : payload)
+    const raw = unwrapField(unwrapField(payload, 'data'), 'permissions')
 
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
 

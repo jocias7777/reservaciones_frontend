@@ -21,6 +21,9 @@ const ACTION_ORDER = [
   'list',
   'select',
   'assign',
+  // Justo detrás de `assign` porque es su versión sin límites: quien lee la
+  // matriz encuentra las dos juntas y ve que son cosas distintas.
+  'grant_any',
   'create',
   'bulk_create',
   'update',
@@ -41,6 +44,7 @@ const ACTION_LABELS: Record<string, string> = {
   list: 'Listar',
   select: 'Seleccionar',
   assign: 'Asignar permisos',
+  grant_any: 'Delegar sin límite',
   create: 'Crear',
   bulk_create: 'Crear masivo',
   update: 'Actualizar',
@@ -65,6 +69,12 @@ const ACTION_HINTS: Record<string, string> = {
   list: 'Ver el listado del módulo y buscar dentro de él.',
   select: 'Elegirlo en los desplegables de un formulario, sin ver el listado completo.',
   assign: 'Ver y editar la matriz de permisos de un rol, o las excepciones de un usuario, sin acceso a la búsqueda avanzada sobre esa tabla.',
+  // `assign` por sí sola solo deja repartir lo que uno ya tiene, y nunca sobre
+  // el propio rol/usuario ni sobre superadmin. Esta acción levanta esos tres
+  // límites de golpe (ver `app/services/permission_delegation_policy.py`), así
+  // que el tooltip tiene que decirlo: quien la concede está repartiendo la
+  // capacidad de repartir cualquier cosa.
+  grant_any: 'Conceder cualquier acción del catálogo, incluidas las que uno mismo no tiene, y sobre cualquier rol o usuario. Sin ella solo se puede delegar lo que ya se posee.',
   create: 'Dar de alta nuevos registros.',
   bulk_create: 'Dar de alta varios registros de una sola vez, por lote.',
   update: 'Modificar registros existentes.',
@@ -79,8 +89,21 @@ const ACTION_HINTS: Record<string, string> = {
   bulk_restore: 'Recuperar varios registros de la papelera de una sola vez.'
 }
 
-/** Acciones cuyo efecto no se puede revertir: se marcan visualmente. */
-const IRREVERSIBLE_ACTIONS = new Set(['hard_delete', 'bulk_hard_delete'])
+/**
+ * Acciones que se marcan en rojo, con el motivo por el que se marcan.
+ *
+ * No todas lo son por lo mismo, y el aviso no puede decir «Acción irreversible»
+ * para todas: `grant_any` se deshace quitándola, lo que la hace delicada es que
+ * levanta los tres límites de la delegación (no concederse a uno mismo, no
+ * repartir lo que no se tiene, no tocar superadmin — ver
+ * `app/services/permission_delegation_policy.py`). Cada una lleva su texto, que
+ * es además el que oye un lector de pantalla.
+ */
+const ACTION_WARNINGS: Record<string, string> = {
+  hard_delete: 'Acción irreversible',
+  bulk_hard_delete: 'Acción irreversible',
+  grant_any: 'Concede autoridad sin límite'
+}
 
 /**
  * Las acciones son muchas para leerlas de golpe, así que en la tarjeta de cada
@@ -136,8 +159,12 @@ export function actionHint(action: Action): string | undefined {
   return ACTION_HINTS[action.code] ?? action.description ?? undefined
 }
 
-export function isIrreversibleAction(action: Action): boolean {
-  return IRREVERSIBLE_ACTIONS.has(action.code)
+/**
+ * El aviso de una acción delicada, o `undefined` si no lo necesita. Vale a la
+ * vez de condición para pintar la señal y de texto para el lector de pantalla.
+ */
+export function actionWarning(action: Action): string | undefined {
+  return ACTION_WARNINGS[action.code]
 }
 
 /** Ordena las acciones según `ACTION_ORDER`; las desconocidas van al final. */
@@ -212,6 +239,39 @@ export function resolveEffective(state: OverrideState, inherited: boolean): bool
   if (state === 'grant') return true
   if (state === 'deny') return false
   return inherited
+}
+
+/**
+ * El mensaje de un error del backend, con los ids de acción que cite traducidos
+ * a «Módulo · Acción».
+ *
+ * Al guardar una matriz, la política de delegación puede responder 403 diciendo
+ * qué acciones no se pueden repartir, y las nombra por id
+ * (`app/services/permission_delegation_policy.py::_mensaje_de_mas`), que es lo
+ * único que maneja por dentro. Mostrado tal cual, el aviso es una fila de UUIDs
+ * que no le dice nada a nadie —justo cuando hace falta saber qué celda hay que
+ * desmarcar—; estas pantallas sí tienen el catálogo cargado, así que pueden
+ * volverlos legibles.
+ *
+ * Se sustituye por coincidencia literal del id, sin dar por hecho su formato, y
+ * lo que no esté en el catálogo se deja intacto: un mensaje traducido a medias
+ * sigue siendo mejor que ninguno.
+ */
+export function describeActionIds(
+  message: string,
+  actions: Action[],
+  modules: PermissionModule[]
+): string {
+  const moduleNames = new Map(modules.map(module => [module.id, module.name]))
+
+  return actions.reduce((text, action) => {
+    if (!text.includes(action.id)) return text
+
+    const moduleName = moduleNames.get(action.permission_id)
+    const label = moduleName ? `${moduleName} · ${actionLabel(action)}` : actionLabel(action)
+
+    return text.split(action.id).join(label)
+  }, message)
 }
 
 /**

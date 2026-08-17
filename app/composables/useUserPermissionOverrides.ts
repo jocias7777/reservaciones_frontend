@@ -173,6 +173,15 @@ export function useUserPermissionOverrides(options: UseUserPermissionOverridesOp
     draft.value = new Map(baseline.value)
   }
 
+  /**
+   * El mensaje de un error de guardado, listo para mostrar. Gemelo del de
+   * `usePermissionMatrix`, y por el mismo motivo: los 403 de la política de
+   * delegación citan las acciones por id (ver `describeActionIds`).
+   */
+  function describeError(error: unknown): string {
+    return describeActionIds(apiErrorMessage(error), actions.value, modules.value)
+  }
+
   return {
     modules,
     actions,
@@ -197,6 +206,7 @@ export function useUserPermissionOverrides(options: UseUserPermissionOverridesOp
     setModule,
     resetAllToInherit,
     setBaseline,
-    reset
+    reset,
+    describeError
   }
 }

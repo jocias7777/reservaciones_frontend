@@ -33,3 +33,27 @@ export interface RefreshResponse {
 
 /** `GET /auth/me` responde sin envoltorio `{ data }`. */
 export type MeResponse = Required<Pick<SessionUser, 'id' | 'email' | 'username' | 'role' | 'is_active'>>
+
+/**
+ * `POST /auth/forgot-password` responde 200 con el MISMO mensaje exista o no la
+ * cuenta (SEC-004): no hay campo que diga si se encontró, y no es un descuido —
+ * es lo que impide usar el endpoint para averiguar qué correos están dados de
+ * alta. La pantalla muestra `message` tal cual.
+ */
+export interface ForgotPasswordResponse {
+  message: string
+}
+
+/**
+ * `POST /auth/reset-password`. El `token` es el del enlace del correo, que llega
+ * en el query string de `/reset-password` (lo arma el backend con
+ * `PASSWORD_RESET_URL_BASE`).
+ */
+export interface ResetPasswordPayload {
+  token: string
+  password: string
+}
+
+export interface ResetPasswordResponse {
+  message: string
+}

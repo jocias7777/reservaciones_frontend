@@ -1,4 +1,11 @@
-import type { LoginPayload, LoginResponse, MeResponse } from '~/types'
+import type {
+  ForgotPasswordResponse,
+  LoginPayload,
+  LoginResponse,
+  MeResponse,
+  ResetPasswordPayload,
+  ResetPasswordResponse
+} from '~/types'
 
 /**
  * Operaciones de sesión contra `/api/auth/*`.
@@ -57,10 +64,54 @@ export function useAuth() {
     }
   }
 
+  /**
+   * `POST /auth/forgot-password`. Pide el correo con el enlace de recuperación.
+   *
+   * El backend responde SIEMPRE lo mismo —«Si la cuenta existe, se envió un
+   * correo…»— exista o no la cuenta, a propósito: distinguirlo dejaría usar esta
+   * pantalla para averiguar qué correos están registrados (SEC-004). Así que
+   * esto no devuelve «se encontró» ni nada parecido, y la pantalla tampoco puede
+   * inventárselo: se muestra su mensaje tal cual.
+   *
+   * No pasa por `session`: se llama sin haber entrado.
+   */
+  async function forgotPassword(email: string) {
+    const response = await api<ForgotPasswordResponse>('/auth/forgot-password', {
+      method: 'POST',
+      body: { email }
+    })
+
+    return response.message
+  }
+
+  /**
+   * `POST /auth/reset-password`. Consume el token del enlace y fija la
+   * contraseña nueva.
+   *
+   * Además de cambiarla, el backend invalida TODOS los refresh tokens de esa
+   * cuenta (`app/services/password_reset.py`): una sesión que siguiera abierta
+   * con la contraseña vieja deja de poder renovarse. Por eso se limpia también
+   * la sesión local — si quien restablece es el mismo que estaba dentro, su
+   * access token todavía valdría un rato y se quedaría en un estado a medias.
+   */
+  async function resetPassword(payload: ResetPasswordPayload) {
+    const response = await api<ResetPasswordResponse>('/auth/reset-password', {
+      method: 'POST',
+      body: payload
+    })
+
+    session.clear()
+    access.reset()
+
+    return response.message
+  }
+
   return {
     ...session,
     login,
     logout,
-    fetchMe
+    fetchMe,
+    forgotPassword,
+    resetPassword
   }
 }

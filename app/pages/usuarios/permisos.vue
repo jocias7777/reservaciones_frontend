@@ -204,7 +204,10 @@ async function save() {
     // el estado con el que entró hasta cerrar sesión.
     await access.refresh()
   } catch (err) {
-    notify.error(err, 'No se pudieron guardar los permisos')
+    // `describeError` y no el mensaje pelado: un 403 de la política de
+    // delegación nombra por id las acciones que no se pueden repartir, y así
+    // sale «Usuarios · Crear» en vez de un UUID.
+    notify.error(err, 'No se pudieron guardar los permisos', editor.describeError(err))
   } finally {
     saving.value = false
   }
