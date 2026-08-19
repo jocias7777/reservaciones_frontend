@@ -10,6 +10,10 @@
  * `hover:text-default`: sin repetirlo, el enlace pierde el color justo al pasarle
  * el cursor. `text-primary` es el verde del tema (ver `app/app.config.ts`), el
  * mismo que usan los enlaces de las páginas de ayuda.
+ *
+ * `text-sm` va explícito y no heredado: junto a la casilla de «Mantener sesión»
+ * el enlace heredaba el tamaño base del formulario (16px) mientras el label de la
+ * casilla es de 14px, y se veía notablemente más grande que ella.
  */
 defineProps<{ to: string }>()
 </script>
@@ -17,7 +21,7 @@ defineProps<{ to: string }>()
 <template>
   <ULink
     :to="to"
-    class="font-medium text-primary hover:text-primary underline"
+    class="text-sm font-medium text-primary hover:text-primary underline"
   >
     <slot />
   </ULink>
