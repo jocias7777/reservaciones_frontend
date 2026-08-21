@@ -9,15 +9,6 @@ import type {
   UpdateActionCategoryPayload
 } from '~/types'
 
-/**
- * Categorías de acciones — `app/routes/action_category_routes.py`
- * (`/action-categories`, tabla `sa_category_permissions`).
- *
- * Son los bloques con los que se reparten las acciones dentro de la tarjeta de
- * cada módulo. Se protegen con el módulo `permissions`, igual que el catálogo de
- * acciones. Como en el resto de la interfaz, el borrado definitivo del backend
- * no se expone: aquí solo se hace borrado lógico.
- */
 export function useActionCategoriesApi() {
   const api = useApi()
 

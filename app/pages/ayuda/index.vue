@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { HelpNextStep, HelpRow } from '~/types'
+
 definePageMeta({
   layout: 'app'
 })
@@ -8,57 +10,101 @@ useSeoMeta({
   description: 'Guía de qué hace cada módulo del sistema y cómo se decide qué puede ver o hacer cada persona.'
 })
 
-interface PermissionStepOutcome {
-  label: string
-  color: 'success' | 'error'
-}
-
-interface PermissionStep {
-  title: string
-  description: string
-  outcomes: PermissionStepOutcome[]
-}
-
 /**
- * Los tres pasos de `require_permission` (`app/decorators.py` del backend),
- * en el mismo orden en el que se comprueban. Es la pieza más importante de
- * toda esta guía: casi todas las dudas de permisos se resuelven volviendo
- * aquí.
+ * Las cuatro piezas con las que se construye cualquier permiso.
+ *
+ * Van primero porque el resto de la guía las da por sabidas: en las pantallas se
+ * llaman así y quien no sepa qué es un «módulo» no entiende ni el menú. Cada una
+ * dice además dónde se administra, para que la palabra tenga un sitio y no se
+ * quede en abstracto.
  */
-const steps: PermissionStep[] = [
+const PIEZAS = [
   {
-    title: '¿El rol activo es «superadmin»?',
-    description: 'Si es así, se saltan los otros dos pasos, en cualquier módulo y cualquier acción. Se exige además que ese rol siga vigente: mandarlo a la papelera le quita el privilegio también a quien lo tenga.',
-    outcomes: [{ label: 'Permite todo, sin más preguntas', color: 'success' }]
+    icon: 'i-lucide-circle-user',
+    label: 'Usuario',
+    what: 'Una persona con cuenta para entrar al sistema.',
+    where: 'Se administra en Usuarios.',
+    to: '/ayuda/usuarios'
   },
   {
-    title: '¿Tiene una excepción suya en «Permisos por usuario»?',
-    description: 'Una excepción es una fila propia para ese módulo y esa acción, y manda siempre, sin importar lo que diga el rol.',
-    outcomes: [
-      { label: 'Con «Concede»: permite', color: 'success' },
-      { label: 'Con «Revoca»: deniega', color: 'error' }
-    ]
+    icon: 'i-lucide-shield',
+    label: 'Rol',
+    what: 'Un puesto con nombre —«Supervisor», «Recepción»— que agrupa permisos y se le asigna a la persona.',
+    where: 'Se administra en Roles.',
+    to: '/ayuda/roles'
   },
   {
-    title: '¿Su rol lo concede en «Permisos por rol»?',
-    description: 'Sin excepción de por medio —el caso más común—, manda lo que tenga marcado el rol para ese módulo y esa acción.',
-    outcomes: [
-      { label: 'Marcado: permite', color: 'success' },
-      { label: 'Sin marcar: deniega', color: 'error' }
-    ]
+    icon: 'i-lucide-box',
+    label: 'Módulo',
+    what: 'Una zona del sistema sobre la que se dan permisos: Usuarios, Roles, Reservaciones…',
+    where: 'Se administra en Módulos del sistema.',
+    to: '/ayuda/modulos-del-sistema'
+  },
+  {
+    icon: 'i-lucide-list-checks',
+    label: 'Acción',
+    what: 'Algo que se puede hacer dentro de un módulo: listar, crear, eliminar, restaurar…',
+    where: 'Se administra en Acciones.',
+    to: '/ayuda/acciones'
   }
 ]
 
 /**
- * El mismo recorrido de arriba, pero resuelto sobre una persona concreta: es
- * la forma más rápida de ver por qué una excepción le gana al rol y por qué
- * «Hereda» no significa «permitido».
+ * El recorrido de las tres preguntas resuelto sobre una persona concreta.
+ *
+ * Es la tabla que contesta la duda más repetida —«¿por qué esta persona no puede,
+ * si su rol sí lo tiene?»— y la que enseña las dos cosas que menos se esperan:
+ * que una excepción le gana al rol, y que «Hereda» no significa «permitido» sino
+ * «lo que diga el rol, sea lo que sea».
  */
-const ejemplo = [
-  { accion: 'Listar', rol: 'Marcado', excepcion: 'Hereda', permite: true, porque: 'Sin excepción, manda el rol' },
-  { accion: 'Crear', rol: 'Marcado', excepcion: 'Revoca', permite: false, porque: 'La excepción gana al rol' },
-  { accion: 'Eliminar', rol: 'Sin marcar', excepcion: 'Hereda', permite: false, porque: 'Sin excepción, manda el rol' },
-  { accion: 'Restaurar', rol: 'Sin marcar', excepcion: 'Concede', permite: true, porque: 'La excepción gana al rol' }
+const EJEMPLO: HelpRow[] = [
+  {
+    cells: ['Listar', 'Marcado', 'Hereda', { label: 'Puede', tone: 'success' }],
+    note: 'Sin excepción, manda el rol'
+  },
+  {
+    cells: ['Crear', 'Marcado', 'Bloquear', { label: 'No puede', tone: 'error' }],
+    note: 'La excepción le gana al rol'
+  },
+  {
+    cells: ['Eliminar', 'Sin marcar', 'Hereda', { label: 'No puede', tone: 'error' }],
+    note: 'Sin excepción, manda el rol'
+  },
+  {
+    cells: ['Restaurar', 'Sin marcar', 'Permitir', { label: 'Puede', tone: 'success' }],
+    note: 'La excepción le gana al rol'
+  }
+]
+
+/**
+ * Por dónde seguir según la pregunta con la que se llega, no según el orden del
+ * menú: casi nadie entra a la guía a leerla entera.
+ */
+const CAMINOS: HelpNextStep[] = [
+  {
+    label: 'Quiero que todo un puesto pueda hacer algo',
+    description: 'Se marca en el rol y lo hereda todo el que lo tenga. Es la vía normal.',
+    to: '/ayuda/permisos-por-rol',
+    icon: 'i-lucide-shield-check'
+  },
+  {
+    label: 'Quiero una excepción para una sola persona',
+    description: 'Permitirle algo que su rol no da, o bloquearle algo que sí da.',
+    to: '/ayuda/permisos-por-usuario',
+    icon: 'i-lucide-user-round-cog'
+  },
+  {
+    label: 'Me sale «no puedes conceder…» al guardar',
+    description: 'Hay límites a lo que uno puede repartir. Aquí están los cuatro, con su aviso.',
+    to: '/ayuda/limites-al-dar-permisos',
+    icon: 'i-lucide-shield-alert'
+  },
+  {
+    label: '¿Qué es el superadmin y qué puede hacer?',
+    description: 'El rol que se salta las tres preguntas, y lo que ni él hace desde estas pantallas.',
+    to: '/ayuda/superadmin',
+    icon: 'i-lucide-crown'
+  }
 ]
 </script>
 
@@ -68,113 +114,144 @@ const ejemplo = [
       Cómo funciona
     </h1>
     <p class="mt-3 text-muted">
-      Esta guía explica qué hace cada módulo del sistema y, sobre todo, cómo se decide qué puede ver o hacer cada
-      persona. Empieza por aquí; el resto son detalles de cada pantalla.
+      Esta guía explica qué hace cada pantalla y, sobre todo, cómo se decide qué puede ver o hacer cada persona.
+      Con esta página se entiende el sistema completo; el resto son detalles de cada pantalla.
     </p>
+
+    <HelpTakeaway
+      :items="[
+        'Un permiso es una frase: **un rol puede una acción en un módulo**.',
+        'Lo normal es dar permisos **al rol**, no a la persona: quien tenga ese rol los hereda solo.',
+        'A una persona se le pueden poner **excepciones**, y la excepción siempre le gana al rol.',
+        'El rol **superadmin** se salta todo esto: puede hacer cualquier cosa.',
+        'Quien reparte permisos **no puede dar lo que él no tiene**, ni tocar su propio rol.'
+      ]"
+    />
 
     <h2 class="mt-10 text-lg font-semibold text-highlighted">
-      Cómo se decide qué puede hacer alguien
+      Las cuatro piezas
     </h2>
     <p class="mt-2 text-sm text-muted">
-      El backend comprueba estos tres pasos, en este orden, en <strong>cada</strong> petición — no solo al entrar a
-      una pantalla. Esto no es una simplificación de la interfaz: es exactamente lo que hace
-      <code class="rounded bg-elevated px-1 py-0.5">require_permission</code> en el servidor.
+      Todo el sistema de permisos se arma con estas cuatro palabras. Son las mismas que aparecen en el menú y en
+      cada pantalla:
     </p>
 
-    <ol class="mt-6 space-y-6">
-      <li
-        v-for="(step, index) in steps"
-        :key="step.title"
-        class="flex gap-3"
+    <div class="mt-5 grid gap-3 sm:grid-cols-2">
+      <NuxtLink
+        v-for="pieza in PIEZAS"
+        :key="pieza.label"
+        :to="pieza.to"
+        class="group flex gap-3 rounded-lg border border-default bg-default p-4 transition-colors duration-150 hover:border-primary/40 hover:bg-elevated/50"
       >
-        <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-semibold text-highlighted">
-          {{ index + 1 }}
-        </span>
+        <UIcon
+          :name="pieza.icon"
+          class="mt-0.5 size-5 shrink-0 text-dimmed transition-colors duration-150 group-hover:text-primary"
+        />
         <div class="min-w-0">
           <p class="font-medium text-highlighted">
-            {{ step.title }}
+            {{ pieza.label }}
           </p>
-          <p class="mt-1 text-sm text-muted">
-            {{ step.description }}
+          <p class="mt-0.5 text-sm text-muted">
+            {{ pieza.what }}
           </p>
-          <div class="mt-2 flex flex-wrap gap-2">
-            <UBadge
-              v-for="outcome in step.outcomes"
-              :key="outcome.label"
-              :label="outcome.label"
-              :color="outcome.color"
-              variant="subtle"
-              size="sm"
-            />
-          </div>
+          <p class="mt-1 text-xs text-dimmed">
+            {{ pieza.where }}
+          </p>
         </div>
-      </li>
-    </ol>
+      </NuxtLink>
+    </div>
 
     <h2 class="mt-10 text-lg font-semibold text-highlighted">
-      Los tres pasos, sobre un caso concreto
+      Un permiso es una frase
     </h2>
     <p class="mt-2 text-sm text-muted">
-      Ana tiene el rol «Supervisor», que en Usuarios concede Listar y Crear, pero no Eliminar ni Restaurar. Además
-      tiene dos excepciones propias. Esto es lo que puede hacer al final:
+      Marcar una casilla en «Permisos por rol» es escribir exactamente esto:
     </p>
 
-    <HelpMockupFrame>
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-125 text-sm">
-          <thead>
-            <tr class="border-b border-default text-left text-xs uppercase tracking-wide text-dimmed">
-              <th class="pb-2 pe-4 font-medium">
-                Acción
-              </th>
-              <th class="pb-2 pe-4 font-medium">
-                Su rol
-              </th>
-              <th class="pb-2 pe-4 font-medium">
-                Su excepción
-              </th>
-              <th class="pb-2 font-medium">
-                Resultado
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="fila in ejemplo"
-              :key="fila.accion"
-              class="border-b border-default last:border-0"
-            >
-              <td class="py-3 pe-4 font-medium text-highlighted">
-                {{ fila.accion }}
-              </td>
-              <td class="py-3 pe-4 text-muted">
-                {{ fila.rol }}
-              </td>
-              <td class="py-3 pe-4 text-muted">
-                {{ fila.excepcion }}
-              </td>
-              <td class="py-3">
-                <UBadge
-                  :label="fila.permite ? 'Puede' : 'No puede'"
-                  :color="fila.permite ? 'success' : 'error'"
-                  variant="subtle"
-                  size="sm"
-                />
-                <span class="ms-2 text-xs text-dimmed">{{ fila.porque }}</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <HelpMockupFrame
+      title="Lo que dice una casilla marcada"
+      caption="Cambia cualquiera de las tres piezas y ya es otro permiso: «Crear en Usuarios» y «Crear en Roles» no tienen nada que ver, aunque las dos se llamen «Crear»."
+    >
+      <HelpPermissionSentence
+        subject="Supervisor"
+        subject-kind="Rol"
+        action="Crear"
+        module="Usuarios"
+      />
     </HelpMockupFrame>
+
+    <p class="mt-4 text-sm text-muted">
+      Por eso los permisos se le dan al rol y no a la persona: la frase se escribe una vez y la hereda todo el
+      que tenga ese rol, ahora y en el futuro. Asignarle un rol a alguien
+      <strong class="text-highlighted">no le copia</strong> los permisos: los lee del rol cada vez, así que
+      cambiar el rol cambia al instante lo que pueden hacer todos sus usuarios.
+    </p>
+
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      Cómo se decide, en tres preguntas
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Cada vez que alguien pulsa un botón, el servidor hace estas tres preguntas
+      <strong class="text-highlighted">en este orden</strong> y se detiene en la primera que tenga respuesta. No
+      es un resumen para la interfaz: es literalmente lo que se comprueba en cada petición.
+    </p>
+
+    <HelpDecisionFlow />
 
     <UAlert
       color="neutral"
       variant="subtle"
       icon="i-lucide-info"
-      class="mt-8"
-      title="Esto no es la barrera de seguridad"
-      description="Ocultar un botón en el navegador es una comodidad, no protección: el backend vuelve a comprobar estos tres pasos por su cuenta en cada petición, y responde 403 si de verdad no toca."
+      class="mt-6"
+      title="Ocultar un botón no es la barrera"
+      description="Las pantallas esconden lo que no se puede usar por comodidad, para no ofrecer algo que va a fallar. La barrera de verdad está en el servidor: vuelve a hacer estas tres preguntas en cada petición y contesta «sin permisos» si no toca, aunque alguien llegue por otro camino."
     />
+
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      Las tres preguntas, sobre un caso real
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Ana tiene el rol «Supervisor». En el módulo Usuarios, ese rol concede Listar y Crear, pero no Eliminar ni
+      Restaurar. Además, alguien le puso dos excepciones propias. Esto es lo que puede hacer al final:
+    </p>
+
+    <HelpMockupFrame
+      title="Ana Martínez · módulo Usuarios"
+      caption="Fíjate en las filas de Crear y Restaurar: la excepción decide, aunque contradiga al rol. Y «Hereda» no quiere decir «permitido» — quiere decir «lo que diga el rol», que puede ser un no."
+    >
+      <HelpOutcomeTable
+        :columns="['Acción', 'Su rol', 'Su excepción', 'Resultado']"
+        :rows="EJEMPLO"
+      />
+    </HelpMockupFrame>
+
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      ¿Por dónde sigo?
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Según lo que hayas venido a resolver:
+    </p>
+
+    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+      <NuxtLink
+        v-for="camino in CAMINOS"
+        :key="camino.to"
+        :to="camino.to"
+        class="group flex gap-3 rounded-lg border border-default bg-default p-4 transition-colors duration-150 hover:border-primary/40 hover:bg-elevated/50"
+      >
+        <UIcon
+          :name="camino.icon"
+          class="mt-0.5 size-5 shrink-0 text-dimmed transition-colors duration-150 group-hover:text-primary"
+        />
+        <div class="min-w-0">
+          <p class="font-medium text-highlighted">
+            {{ camino.label }}
+          </p>
+          <p class="mt-0.5 text-sm text-muted">
+            {{ camino.description }}
+          </p>
+        </div>
+      </NuxtLink>
+    </div>
   </HelpDocsPage>
 </template>

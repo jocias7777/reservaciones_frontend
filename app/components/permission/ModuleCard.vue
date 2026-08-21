@@ -1,16 +1,6 @@
 <script setup lang="ts">
 import type { Action, ActionCategory, PermissionModule } from '~/types'
 
-/**
- * Tarjeta de un módulo con sus interruptores de acción.
- *
- * Las acciones se reparten en bloques según su categoría (Consulta / Gestión /
- * Eliminación...): con la lista plana cuesta distinguir "Eliminar" de "Eliminar
- * masivo permanente", que es justo la diferencia que más importa no equivocarse.
- *
- * Recibe solo las acciones que el módulo implementa de verdad, no el catálogo
- * entero.
- */
 const props = withDefaults(defineProps<{
   module: PermissionModule
   actions: Action[]

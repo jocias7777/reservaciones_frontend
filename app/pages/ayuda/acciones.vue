@@ -1,9 +1,26 @@
 <script setup lang="ts">
+import type { HelpNextStep } from '~/types'
+
 definePageMeta({
   layout: 'app'
 })
 
 useSeoMeta({ title: 'Acciones · Cómo funciona' })
+
+const SIGUIENTE: HelpNextStep[] = [
+  {
+    label: 'Categorías de acciones',
+    description: 'Los bloques en los que se agrupan estas acciones dentro de cada tarjeta.',
+    to: '/ayuda/categorias',
+    icon: 'i-lucide-shapes'
+  },
+  {
+    label: 'Permisos por rol',
+    description: 'Donde cada acción se convierte en un interruptor que se marca.',
+    to: '/ayuda/permisos-por-rol',
+    icon: 'i-lucide-shield-check'
+  }
+]
 </script>
 
 <template>
@@ -12,10 +29,51 @@ useSeoMeta({ title: 'Acciones · Cómo funciona' })
       Acciones
     </h1>
     <p class="mt-3 text-muted">
-      Lo que se puede hacer en cada módulo: listar, crear, editar, eliminar, restaurar... Cada acción pertenece a
-      un módulo, así que «Crear» en Usuarios y «Crear» en Roles son dos permisos distintos, y por eso el catálogo
-      tiene una fila por cada par.
+      Lo que se puede hacer dentro de cada módulo: listar, crear, editar, eliminar, restaurar… Cada acción es el
+      «qué» de un permiso, y cada interruptor de las pantallas de permisos es una de estas.
     </p>
+
+    <HelpTakeaway
+      :items="[
+        'Cada acción **pertenece a un módulo**: «Crear en Usuarios» y «Crear en Roles» son dos acciones distintas.',
+        'Por eso el catálogo tiene **una fila por cada par** módulo + acción, y no una fila por verbo.',
+        'El **código** es lo que reconoce el sistema; el nombre visible es solo lo que se lee en pantalla.',
+        'Dar de alta una acción **no restringe nada** hasta que alguna parte del sistema la comprueba.'
+      ]"
+    />
+
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      Por qué hay tantas filas
+    </h2>
+    <p class="mt-2 text-sm text-muted">
+      Al abrir el listado sorprende la cantidad: «Crear» aparece muchas veces. No están repetidas — cada una es la
+      de su módulo, y se conceden por separado:
+    </p>
+
+    <HelpMockupFrame
+      title="Tres acciones que se llaman «Crear»"
+      caption="Son tres permisos independientes. Conceder «Crear en Usuarios» no habilita nada en Roles, y por eso el catálogo tiene que listarlas por separado."
+    >
+      <div class="space-y-2">
+        <div
+          v-for="modulo in ['Usuarios', 'Roles', 'Acciones']"
+          :key="modulo"
+          class="flex flex-wrap items-center gap-3 rounded-lg border border-default bg-default p-3"
+        >
+          <UBadge
+            label="create"
+            color="neutral"
+            variant="subtle"
+          />
+          <span class="text-sm text-highlighted">Crear</span>
+          <UIcon
+            name="i-lucide-arrow-right"
+            class="size-4 text-dimmed"
+          />
+          <span class="text-sm text-muted">en {{ modulo }}</span>
+        </div>
+      </div>
+    </HelpMockupFrame>
 
     <h2 class="mt-10 text-lg font-semibold text-highlighted">
       El listado
@@ -23,29 +81,18 @@ useSeoMeta({ title: 'Acciones · Cómo funciona' })
     <p class="mt-2 text-sm text-muted">
       Se busca por código, nombre o descripción. Cada fila muestra:
     </p>
-    <ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-muted">
+    <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-muted">
       <li><strong class="text-highlighted">Acción</strong> — nombre visible y código debajo.</li>
       <li><strong class="text-highlighted">Módulo</strong> — a cuál pertenece. Es lo que distingue dos acciones que se llaman igual.</li>
-      <li><strong class="text-highlighted">Categoría</strong> — el bloque en el que aparece, o «Sin categoría».</li>
-      <li><strong class="text-highlighted">Efecto real</strong> — «En uso» si el backend la comprueba de verdad en su módulo, o «Todavía sin efecto» si ninguna ruta lo hace aún.</li>
-      <li><strong class="text-highlighted">Descripción</strong>.</li>
-    </ul>
-    <p class="mt-3 text-sm text-muted">
-      Eliminar una acción concedida en algún permiso no se puede: primero hay que quitarla de ahí. El aviso de
-      confirmación lo recuerda antes de intentarlo.
-    </p>
-
-    <h2 class="mt-10 text-lg font-semibold text-highlighted">
-      Agregar o editar
-    </h2>
-    <ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-muted">
-      <li><strong class="text-highlighted">Código</strong> — lo que compara el backend (<code class="rounded bg-elevated px-1 py-0.5">require_permission(modulo, '&lt;código&gt;')</code>). Solo minúsculas, números y guion bajo, empezando por letra — por ejemplo «bulk_update». Deja de poder cambiarse en cuanto la acción esté concedida en algún permiso.</li>
-      <li><strong class="text-highlighted">Nombre visible</strong> — el que aparece en la matriz.</li>
-      <li><strong class="text-highlighted">Categoría</strong> — obligatoria: el bloque en el que caerá.</li>
-      <li><strong class="text-highlighted">Descripción</strong> — opcional, se muestra junto al interruptor de la acción.</li>
+      <li><strong class="text-highlighted">Categoría</strong> — el bloque en el que aparece dentro de la tarjeta, o «Sin categoría».</li>
+      <li><strong class="text-highlighted">Efecto real</strong> — «En uso» si algo la comprueba de verdad en su módulo, o «Todavía sin efecto» si nada lo hace aún.</li>
+      <li><strong class="text-highlighted">Descripción</strong> — es la que se lee en el «?» del interruptor, así que vale la pena escribirla bien.</li>
     </ul>
 
-    <HelpMockupFrame>
+    <HelpMockupFrame
+      title="«En uso» y «Todavía sin efecto»"
+      caption="Igual que con los módulos: una acción con «Todavía sin efecto» se puede marcar y desmarcar en la matriz, y no cambiará nada hasta que exista la parte del sistema que la revise."
+    >
       <div class="space-y-3">
         <div class="flex flex-wrap items-center gap-3 rounded-lg border border-default bg-default p-3">
           <HelpCalloutBadge :n="1" />
@@ -54,11 +101,11 @@ useSeoMeta({ title: 'Acciones · Cómo funciona' })
               Listar
             </p>
             <p class="text-xs text-muted">
-              list
+              list · Usuarios
             </p>
           </div>
           <UBadge
-            label="En 7 módulos"
+            label="En uso"
             color="success"
             variant="subtle"
             class="ms-auto"
@@ -86,59 +133,55 @@ useSeoMeta({ title: 'Acciones · Cómo funciona' })
 
       <HelpCalloutLegend
         :items="[
-          'El backend ya comprueba esta acción en su módulo: marcarla o desmarcarla cambia algo de verdad',
-          'Ninguna ruta de ese módulo la comprueba todavía: existe en el catálogo, pero no bloquea nada'
+          'Ya se comprueba en su módulo: marcarla o desmarcarla cambia algo de verdad',
+          'Nada la comprueba todavía: existe en el catálogo, pero no bloquea nada'
         ]"
       />
     </HelpMockupFrame>
 
-    <ul class="mt-6 list-disc space-y-3 pl-5 text-sm text-muted">
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      Agregar o editar
+    </h2>
+    <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-muted">
+      <li><strong class="text-highlighted">Código</strong> — el identificador. Solo minúsculas, números y guion bajo, empezando por letra (por ejemplo <code class="rounded bg-elevated px-1 py-0.5">bulk_update</code>).</li>
+      <li><strong class="text-highlighted">Nombre visible</strong> — el que aparece junto al interruptor en la matriz.</li>
+      <li><strong class="text-highlighted">Módulo</strong> — a cuál pertenece. Es lo que la convierte en un permiso concreto.</li>
+      <li><strong class="text-highlighted">Categoría</strong> — obligatoria: el bloque en el que caerá dentro de la tarjeta.</li>
+      <li><strong class="text-highlighted">Descripción</strong> — opcional, se muestra en el «?» junto al interruptor.</li>
+    </ul>
+
+    <UAlert
+      color="neutral"
+      variant="subtle"
+      icon="i-lucide-lock"
+      class="mt-6"
+      title="El código deja de poder cambiarse"
+      description="En cuanto la acción está concedida en algún permiso, su código se bloquea: es justo lo que se compara al proteger cada operación, y cambiarlo dejaría esa comprobación mirando un código que ya no existe. El sistema lo rechaza con un aviso explicando por qué."
+    />
+
+    <h2 class="mt-10 text-lg font-semibold text-highlighted">
+      Lo que conviene saber
+    </h2>
+    <ul class="mt-3 list-disc space-y-3 pl-5 text-sm text-muted">
       <li>
-        Una acción se agrupa dentro de una
+        <strong class="text-highlighted">Una acción concedida no se puede eliminar.</strong> Primero hay que
+        quitarla de los roles y usuarios que la tengan; el aviso de confirmación lo recuerda antes de intentarlo.
+      </li>
+      <li>
+        <strong class="text-highlighted">La categoría es solo orden visual.</strong> Cambiarla mueve el
+        interruptor de bloque dentro de la tarjeta y no altera ningún permiso. Ver
         <NuxtLink
           to="/ayuda/categorias"
           class="text-primary underline"
-        >categoría</NuxtLink>, solo para ordenar la lista al momento de armar la matriz de permisos.
+        >Categorías de acciones</NuxtLink>.
       </li>
       <li>
-        Igual que con los módulos, dar de alta una acción aquí no restringe nada: solo cuenta cuando el backend la
-        comprueba de verdad en una ruta.
+        <strong class="text-highlighted">Los nombres visibles de las acciones conocidas están fijados.</strong>
+        «Listar», «Asignar permisos», «Delegar sin límite»… se muestran siempre igual en la matriz para que
+        signifiquen lo mismo en todos los módulos, aunque en el catálogo tengan otro nombre escrito.
       </li>
     </ul>
 
-    <HelpMockupFrame>
-      <div class="flex flex-wrap items-center gap-6 rounded-lg border border-default bg-default p-4">
-        <div class="flex items-center gap-2">
-          <HelpCalloutBadge :n="1" />
-          <UBadge
-            label="restore"
-            color="neutral"
-            variant="subtle"
-          />
-        </div>
-        <div class="flex items-center gap-2">
-          <HelpCalloutBadge :n="2" />
-          <p class="text-sm text-highlighted">
-            Restaurar
-          </p>
-        </div>
-        <div class="flex items-center gap-2">
-          <HelpCalloutBadge :n="3" />
-          <UIcon
-            name="i-lucide-shapes"
-            class="size-5 text-dimmed"
-          />
-          <span class="text-sm text-muted">Papelera y restauración</span>
-        </div>
-      </div>
-
-      <HelpCalloutLegend
-        :items="[
-          'Código — el identificador que usa el backend para reconocerla',
-          'Nombre — lo que se muestra en las pantallas de permisos',
-          'Categoría — el bloque en el que se agrupa dentro de la matriz'
-        ]"
-      />
-    </HelpMockupFrame>
+    <HelpNextSteps :links="SIGUIENTE" />
   </HelpDocsPage>
 </template>

@@ -13,11 +13,18 @@ type NavEntry = { type: 'label', label: string } | { type?: undefined, label: st
 const NAV_ENTRIES: NavEntry[] = [
   { type: 'label', label: 'Guía' },
   { label: 'Introducción', to: '/ayuda' },
-  { type: 'label', label: 'Módulos' },
-  { label: 'Usuarios', to: '/ayuda/usuarios' },
-  { label: 'Roles', to: '/ayuda/roles' },
+  // Las cuatro de permisos van juntas y antes que las pantallas sueltas: son el
+  // tema por el que se abre esta guía, y leídas en este orden se explican unas a
+  // otras (qué da un rol → qué se le excepciona a una persona → qué no puedes
+  // repartir → quién se lo salta todo).
+  { type: 'label', label: 'Permisos' },
   { label: 'Permisos por rol', to: '/ayuda/permisos-por-rol' },
   { label: 'Permisos por usuario', to: '/ayuda/permisos-por-usuario' },
+  { label: 'Límites al dar permisos', to: '/ayuda/limites-al-dar-permisos' },
+  { label: 'El superadmin', to: '/ayuda/superadmin' },
+  { type: 'label', label: 'Pantallas' },
+  { label: 'Usuarios', to: '/ayuda/usuarios' },
+  { label: 'Roles', to: '/ayuda/roles' },
   { label: 'Módulos del sistema', to: '/ayuda/modulos-del-sistema' },
   { label: 'Acciones', to: '/ayuda/acciones' },
   { label: 'Categorías de acciones', to: '/ayuda/categorias' },
@@ -74,22 +81,28 @@ onMounted(() => {
 
     En `lg` y superior no es la ventana la que hace scroll: el contenedor
     ocupa exactamente el alto que sobra bajo el header (`100vh` menos su
-    altura) y no deja que nada se desborde de él. Adentro, la barra
-    izquierda no tiene ninguna propiedad de scroll — por eso queda
-    literalmente fija, nunca se mueve — y es el panel de la derecha el único
-    que puede desplazarse. Por debajo de `lg` la barra está oculta y esto no
-    aplica: la página entera vuelve a hacer scroll normal, como siempre.
+    altura) y no deja que nada se desborde de él. Adentro, el panel de la
+    derecha es el que se desplaza mientras se lee; la barra izquierda se
+    queda quieta, y solo hace scroll en la ventana tan baja que el índice ya
+    no cabe entero (ver su comentario). Por debajo de `lg` la barra está
+    oculta y esto no aplica: la página entera vuelve a hacer scroll normal,
+    como siempre.
   -->
   <div class="mx-auto max-w-(--ui-container) px-4 pt-6 pb-8 sm:px-6 lg:px-8 lg:h-[calc(100vh-var(--ui-header-height))] lg:overflow-hidden">
     <div class="lg:grid lg:grid-cols-10 lg:gap-10 lg:h-full">
       <!--
-        Sin alto fijo propio: ocupa el de su celda del grid (`lg:h-full`), que
-        ya alcanza de sobra para las 13 entradas. Sin overflow tampoco: al no
-        tener scroll propio, la rueda del mouse encima de la barra nunca
-        queda atrapada en ella — pasa de largo, pero ya no hay nada arriba
-        que la reciba porque este panel no se mueve.
+        Sin alto fijo propio: ocupa el de su celda del grid (`lg:h-full`). En una
+        pantalla de altura normal el índice entero cabe ahí y la barra se queda
+        literalmente fija, que es como debe verse.
+
+        El `overflow-y-auto` es solo para la ventana baja donde ya no cabe: sin
+        él, el contenedor de arriba (`lg:overflow-hidden`) recortaría las últimas
+        entradas y no habría forma de llegar a ellas. Mientras quepa no cambia
+        nada —un elemento que no se desborda no atrapa la rueda del mouse, la
+        deja pasar igual—, y la barra en sí se oculta como en el panel de la
+        derecha para no meter una segunda barra de scroll en la pantalla.
       -->
-      <aside class="hidden lg:col-span-2 lg:block lg:h-full">
+      <aside class="hidden lg:col-span-2 lg:block lg:h-full lg:overflow-y-auto lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden">
         <UNavigationMenu
           :items="items"
           orientation="vertical"

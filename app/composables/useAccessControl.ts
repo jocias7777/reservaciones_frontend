@@ -1,70 +1,11 @@
 import type { FetchOptions } from 'ofetch'
 import type { ApiClient } from '~/plugins/api'
 
-/**
- * Qué puede ver de verdad el usuario que ha iniciado sesión.
- *
- * Hay dos formas de averiguarlo y se intentan en este orden:
- *
- * 1. Preguntárselo al backend, si publica sus permisos en
- *    `GET /auth/me/permissions`. Es una sola petición y trae TODAS las acciones
- *    de cada módulo, así que también se sabe quién puede crear o borrar.
- *
- * 2. Si ese endpoint no existe, deducirlo probando: una consulta mínima
- *    (`QUERY` con `limit: 1`) a cada módulo, mirando si contesta o si responde
- *    403. Sale más caro —una petición por módulo— y solo averigua quién puede
- *    listar, que es lo que hace falta para decidir si se entra a una pantalla.
- *
- *    `restore`, `bulk_restore` y `create`/`update`/`delete`/`bulk_delete` se
- *    prueban también, aparte: no hay un `GET` barato para ninguno de esos, así
- *    que se manda la petición real de escritura contra un id que no puede
- *    existir (o un cuerpo vacío, para `create`). Ninguno de los desenlaces
- *    posibles —403 sin permiso, 404/400 "no encontrado"/"datos incompletos"
- *    con permiso— toca una fila de la base: se comprobó, con las cuatro
- *    validaciones de alta del backend (usuario, rol, acción, categoría) antes
- *    de escribir nada, que un cuerpo vacío nunca pasa a crear un registro real.
- *
- *    `assign` (matrices de permisos por rol y por usuario) sí tiene un `GET`
- *    barato de verdad —`GET .../by-role/:id` y `GET .../by-user/:id`—, así que
- *    se prueba con una lectura normal contra `PROBE_ID`, sin necesidad del
- *    truco del cuerpo vacío.
- *
- * Las dos vías miden lo mismo: el resultado de `require_permission`, con lo que
- * da el rol, las excepciones de ese usuario y el bypass del superadmin ya
- * aplicados. Calcularlo por nuestra cuenta seria reimplementar esas tres reglas
- * y arriesgarse a que digan cosas distintas.
- *
- * Esto NO es la barrera de seguridad: la barrera es el backend, que vuelve a
- * comprobarlo en cada petición. Aquí solo se evita ofrecer y abrir pantallas que
- * van a responder 403 en cuanto pidan sus datos.
- *
- * La decisión de qué se puede hacer con ese estado —`can`, `canVisit`— es pura
- * y vive en `app/utils/access.ts` (`resolveCan` y compañía); este composable
- * solo junta el estado reactivo y las llamadas de red. Así la decisión se
- * puede probar sin Nuxt de por medio.
- */
-
 /** Lo publica el backend como `{ "users": ["read", "list"], ... }`. */
 const PERMISSIONS_ENDPOINT = '/auth/me/permissions'
 
-/**
- * Id con el que se prueban `restore`, `update` y `delete` (uno a uno o en
- * lote) sin tocar ninguna fila de verdad.
- *
- * No existe fila con este id —ningún generador de ids reales va a
- * producirlo—, así que cualquier petición contra él —sola o dentro de un
- * `{ ids: [...] }`— siempre llega vacía al repositorio. Lo único que decide la
- * respuesta es el permiso.
- */
 const PROBE_ID = '00000000-0000-0000-0000-000000000000'
 
-/**
- * `objeto[campo]` si el objeto trae ese campo, o el objeto tal cual si no.
- *
- * Pela los envoltorios de la respuesta (`data`, `permissions`) sin romperse
- * cuando alguno no está, que es lo que permite leer tanto la forma que publica
- * hoy el backend como el mapa plano.
- */
 function unwrapField(payload: unknown, field: string): unknown {
   if (!payload || typeof payload !== 'object' || !(field in payload)) return payload
 
@@ -81,20 +22,6 @@ export function useAccessControl() {
   const loaded = useState<boolean>('access:loaded', () => false)
   const source = useState<AccessSource | null>('access:source', () => null)
 
-  /**
-   * Una llamada al backend, hecha de la forma que funciona en cada lado.
-   *
-   * En el navegador va por `/api`, como todo lo demás. En el servidor NO puede
-   * ir por ahí: el proxy de `/api` tiene que leer a mano el cuerpo de los
-   * métodos que h3 no conoce —y `QUERY` es uno—, y en una petición interna ese
-   * cuerpo no se deja leer («Readable.asyncIterator is not implemented yet»).
-   * Así que durante el render se habla directamente con el backend, que es
-   * exactamente a donde apunta el proxy.
-   *
-   * Se hace este esfuerzo para poder decidir ANTES de pintar. Dejándolo solo
-   * para el navegador, la pantalla prohibida se llegaba a ver un segundo y
-   * medio largo antes de que el redirect la quitara de en medio.
-   */
   function request<T>(endpoint: string, options: FetchOptions<'json'> = {}): Promise<T> {
     if (!import.meta.server) return api<T>(endpoint, options)
 
@@ -126,23 +53,6 @@ export function useAccessControl() {
     })
   }
 
-  /**
-   * Convierte lo que publica el backend en el mapa que se usa aquí.
-   *
-   * `GET /auth/me/permissions` responde
-   * `{ role, is_superadmin, permissions, overrides }`
-   * (`app/main/routes.py::me_permissions`): el mapa de módulos × acciones viaja
-   * DENTRO de `permissions`, no en la raíz. Los otros tres campos son para
-   * diagnosticar —`overrides` dice qué excepción concreta le quita a alguien
-   * algo que su rol sí concede— y aquí no hacen falta: `permissions` ya llega
-   * con el rol, las excepciones y el bypass del superadmin resueltos.
-   *
-   * Se sigue aceptando el mapa plano en la raíz, y con o sin el envoltorio
-   * `{ data }`: no cuesta nada y ninguna de las dos formas está garantizada.
-   * Si lo que llega no encaja —o llega vacío— se devuelve `null` y se pasa a
-   * deducirlo probando: más vale una vuelta de más que dejar a alguien fuera de
-   * su aplicación por una respuesta que no supimos leer.
-   */
   function toGrantedMap(payload: unknown): Record<string, boolean> | null {
     const raw = unwrapField(unwrapField(payload, 'data'), 'permissions')
 
@@ -175,15 +85,6 @@ export function useAccessControl() {
 
   /**
    * Corre la petición real de prueba y la traduce a "puede" / "no puede".
-   *
-   * Solo un 403 cuenta como "no puede". Si falla por cualquier otra razón —el
-   * backend caído, la red, un 404/400 porque el id de prueba no es de nadie o
-   * el cuerpo vacío no pasa la validación— se concede: dejar a alguien fuera
-   * de su propia aplicación por un fallo pasajero es peor que dejarle entrar a
-   * algo que, si de verdad no le corresponde, el backend le va a negar igual.
-   *
-   * Todas las pruebas de abajo comparten esta forma; solo cambia qué endpoint
-   * y qué método golpean.
    */
   async function probeWrite(run: () => Promise<unknown>): Promise<boolean> {
     try {
@@ -203,91 +104,36 @@ export function useAccessControl() {
   /** ¿Contesta este módulo a una consulta de listado? */
   const probe = (module: string) => probeModuleAction(module, endpoint => queryOne(endpoint))
 
-  /**
-   * ¿Puede restaurar una fila de este módulo?
-   *
-   * No hay un `GET` barato para `restore`, así que se manda el `POST` real
-   * contra `PROBE_ID`. Sin permiso, el decorador del backend corta con
-   * 403 antes de llegar al repositorio; con permiso, llega y responde 404
-   * porque el id no es de nadie. Ninguno de los dos casos escribe nada.
-   */
   const probeRestore = (module: string) => probeModuleAction(
     module,
     endpoint => request(`${endpoint}/${PROBE_ID}/restore`, { method: 'POST' })
   )
 
-  /**
-   * ¿Puede restaurar en lote en este módulo?
-   *
-   * Es un permiso aparte de `restore` en el backend (`require_permission(modulo,
-   * 'bulk_restore')`): alguien puede tener uno sin el otro. Mismo truco que
-   * `probeRestore`, contra `POST .../bulk/restore` con `PROBE_ID` como
-   * único id de la lista.
-   */
   const probeBulkRestore = (module: string) => probeModuleAction(
     module,
     endpoint => request(`${endpoint}/bulk/restore`, { method: 'POST', body: { ids: [PROBE_ID] } })
   )
 
-  /**
-   * ¿Puede dar de alta en este módulo?
-   *
-   * El `POST` de creación con el cuerpo vacío `{}`: si el permiso falta, el
-   * decorador corta con 403 antes de leerlo; si está, la validación de alta
-   * de los cuatro módulos con formulario (usuario, rol, acción, categoría)
-   * rechaza el cuerpo vacío con 400 ANTES de que el servicio toque la base
-   * —todas exigen al menos un campo—, así que nunca se llega a crear nada.
-   */
   const probeCreate = (module: string) => probeModuleAction(
     module,
     endpoint => request(endpoint, { method: 'POST', body: {} })
   )
 
-  /**
-   * ¿Puede editar una fila de este módulo?
-   *
-   * `PUT .../<id>` con `PROBE_ID` y cuerpo vacío. Mismo doble cierre
-   * que `create`: sin permiso, 403 antes de leer el cuerpo; con permiso, la
-   * validación de actualización rechaza el cuerpo vacío con 400 antes de
-   * buscar la fila, así que ni siquiera llega a comprobar que el id no existe.
-   */
   const probeUpdate = (module: string) => probeModuleAction(
     module,
     endpoint => request(`${endpoint}/${PROBE_ID}`, { method: 'PUT', body: {} })
   )
 
-  /**
-   * ¿Puede eliminar una fila de este módulo?
-   *
-   * `DELETE .../<id>` con `PROBE_ID`. Sin permiso, 403; con permiso,
-   * el servicio busca la fila, no la encuentra y responde 404 sin borrar nada.
-   */
   const probeDelete = (module: string) => probeModuleAction(
     module,
     endpoint => request(`${endpoint}/${PROBE_ID}`, { method: 'DELETE' })
   )
 
-  /**
-   * ¿Puede eliminar en lote en este módulo?
-   *
-   * `DELETE .../bulk` con `PROBE_ID` como único id. Sin permiso, 403;
-   * con permiso, no hay ninguna fila activa con ese id y no se borra nada.
-   */
   const probeBulkDelete = (module: string) => probeModuleAction(
     module,
     endpoint => request(`${endpoint}/bulk`, { method: 'DELETE', body: { ids: [PROBE_ID] } })
   )
 
-  /**
-   * ¿Puede administrar la matriz de permisos de este módulo?
-   *
-   * Solo existe para `role_permissions` (`GET .../by-role/:id`) y
-   * `user_permissions` (`GET .../by-user/:id`); el segmento de la URL cambia
-   * según cuál sea, de ahí el mapa. Como es un `GET` normal, ni siquiera hace
-   * falta el truco del cuerpo vacío de `probeCreate`/`probeUpdate`: sin
-   * permiso, 403; con permiso, 404 porque `PROBE_ID` no es de nadie. Ninguno
-   * de los dos casos lee ni escribe una fila real.
-   */
   const ASSIGN_PATH_SEGMENT: Record<string, string> = {
     role_permissions: 'by-role',
     user_permissions: 'by-user'
@@ -300,11 +146,6 @@ export function useAccessControl() {
     return probeModuleAction(module, endpoint => request(`${endpoint}/${segment}/${PROBE_ID}`, { method: 'GET' }))
   }
 
-  /**
-   * Junta en un solo mapa el resultado de probar una acción en una lista de
-   * módulos. Lo usa `probeAll` una vez por acción, en vez de repetir el mismo
-   * `Promise.all` + `accessKey` para cada una.
-   */
   async function probeAction(
     modules: readonly string[],
     action: string,
@@ -313,12 +154,6 @@ export function useAccessControl() {
     return Promise.all(modules.map(async module => [accessKey(module, action), await run(module)] as const))
   }
 
-  /**
-   * Vía 2: se deduce módulo por módulo. `list` en todos los módulos guardados;
-   * `restore`/`bulk_restore`, `create`/`update`/`delete`/`bulk_delete` y
-   * `assign` solo en los que tienen papelera, formulario de alta y matriz de
-   * permisos, respectivamente.
-   */
   async function probeAll(): Promise<Record<string, boolean>> {
     const results = await Promise.all([
       probeAction(GUARDED_MODULES, 'list', probe),
@@ -342,16 +177,6 @@ export function useAccessControl() {
     loaded.value = true
   }
 
-  /**
-   * Resuelve los permisos una vez por sesión cargada.
-   *
-   * El resultado viaja del servidor al navegador dentro del estado de Nuxt, así
-   * que se pregunta una sola vez por carga de página, no dos.
-   *
-   * La promesa se guarda en el contexto de Nuxt y no en un módulo suelto: un
-   * valor de módulo lo compartirían todas las peticiones del servidor a la vez,
-   * y un usuario acabaría viendo el menú de otro.
-   */
   function ensureLoaded(): Promise<void> {
     if (loaded.value || !session.isAuthenticated.value) return Promise.resolve()
 
@@ -363,12 +188,6 @@ export function useAccessControl() {
     return nuxtApp._accessProbe
   }
 
-  /**
-   * La decisión en sí —`resolveCan` / `resolveCanVisit`— vive en
-   * `app/utils/access.ts` como funciones puras, para poder probarla con un
-   * test normal y corriente en vez de tener que montar toda la aplicación.
-   * Aquí solo se les pasa el estado reactivo ya resuelto.
-   */
   const state = computed<AccessState>(() => ({ granted: granted.value, loaded: loaded.value, source: source.value }))
 
   function can(module: string, action = 'list'): boolean {
@@ -389,16 +208,6 @@ export function useAccessControl() {
     loaded.value = false
   }
 
-  /**
-   * Vuelve a preguntar sin esperar a un logout/login.
-   *
-   * `ensureLoaded` se pregunta una sola vez por sesión a propósito —sondear en
-   * cada navegación sale caro—, pero eso significa que guardar un cambio en
-   * «Permisos por rol» o «Permisos por usuario» no se refleja para quien
-   * acaba de hacerlo: sigue viendo el estado con el que entró hasta que cierra
-   * sesión. Esas dos pantallas llaman a esto justo después de guardar, para
-   * que la propia cuenta que edita vea el resultado ya, sin recargar.
-   */
   function refresh(): Promise<void> {
     reset()
     return ensureLoaded()

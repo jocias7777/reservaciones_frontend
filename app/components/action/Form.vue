@@ -2,19 +2,6 @@
 import type { FormError } from '@nuxt/ui'
 import type { Action, ActionCategory, CreateActionPayload, PermissionModule } from '~/types'
 
-/**
- * Alta y edición de una acción (tabla `sa_actions`).
- *
- * Una acción pertenece a un módulo: `users.create` y `roles.create` son dos
- * permisos distintos aunque compartan código. Por eso el módulo se elige al
- * crear y NO se puede cambiar después: moverla de sitio le cambiaría el
- * significado de golpe a todo lo que ya se concedió con ella.
- *
- * El `code` es lo que compara el backend en `require_permission(modulo, '<code>')`,
- * así que se valida con el mismo formato que los módulos. Cambiarlo cuando la
- * acción ya está concedida rompería esa comprobación, y el backend lo rechaza
- * con un 409 explicando por qué; aquí solo se avisa en la ayuda del campo.
- */
 const props = withDefaults(defineProps<{
   /** Id del `<form>`: lo usa el botón de guardar, que vive en la cabecera. */
   id?: string
