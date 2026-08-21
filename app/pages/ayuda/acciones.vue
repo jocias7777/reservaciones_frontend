@@ -33,6 +33,35 @@ const SIGUIENTE: HelpNextStep[] = [
       «qué» de un permiso, y cada interruptor de las pantallas de permisos es una de estas.
     </p>
 
+    <!--
+      Esta página explica el CATÁLOGO (código, nombre, módulo, categoría); qué
+      hace cada verbo en la práctica es un tema aparte y con su propio ejemplo
+      visual por acción — demasiado para una sección de esta página sin
+      convertirla en dos guías a la vez.
+    -->
+    <NuxtLink
+      to="/ayuda/glosario-de-acciones"
+      class="group mt-5 flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 transition-colors duration-150 hover:bg-primary/10"
+    >
+      <UIcon
+        name="i-lucide-sparkles"
+        class="size-5 shrink-0 text-primary"
+      />
+      <div class="min-w-0 flex-1">
+        <p class="font-medium text-highlighted">
+          ¿No sabes qué hace «Seleccionar» o «Eliminar permanente»?
+        </p>
+        <p class="mt-0.5 text-sm text-muted">
+          Ver «Qué hace cada acción»: las 17 acciones del catálogo, con un ejemplo de qué cambia encendidas y
+          apagadas.
+        </p>
+      </div>
+      <UIcon
+        name="i-lucide-arrow-right"
+        class="size-4 shrink-0 text-dimmed transition-transform duration-150 group-hover:translate-x-0.5"
+      />
+    </NuxtLink>
+
     <HelpTakeaway
       :items="[
         'Cada acción **pertenece a un módulo**: «Crear en Usuarios» y «Crear en Roles» son dos acciones distintas.',

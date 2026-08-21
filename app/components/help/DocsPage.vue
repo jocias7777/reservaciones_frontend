@@ -26,6 +26,9 @@ const NAV_ENTRIES: NavEntry[] = [
   { label: 'Usuarios', to: '/ayuda/usuarios' },
   { label: 'Roles', to: '/ayuda/roles' },
   { label: 'Módulos del sistema', to: '/ayuda/modulos-del-sistema' },
+  // Va antes que «Acciones»: primero qué hace cada una en la práctica, después
+  // cómo se administra el catálogo. Al revés se lee el «cómo» sin saber el «qué».
+  { label: 'Qué hace cada acción', to: '/ayuda/glosario-de-acciones' },
   { label: 'Acciones', to: '/ayuda/acciones' },
   { label: 'Categorías de acciones', to: '/ayuda/categorias' },
   { type: 'label', label: 'Referencia' },

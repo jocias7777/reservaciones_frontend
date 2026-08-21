@@ -104,6 +104,12 @@ const CAMINOS: HelpNextStep[] = [
     description: 'El rol que se salta las tres preguntas, y lo que ni él hace desde estas pantallas.',
     to: '/ayuda/superadmin',
     icon: 'i-lucide-crown'
+  },
+  {
+    label: 'No sé qué hace «Seleccionar» o «Delegar sin límite»',
+    description: 'Las 17 acciones del catálogo, con un ejemplo de qué cambia encendidas y apagadas.',
+    to: '/ayuda/glosario-de-acciones',
+    icon: 'i-lucide-sparkles'
   }
 ]
 </script>

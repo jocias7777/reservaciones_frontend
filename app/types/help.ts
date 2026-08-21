@@ -59,3 +59,34 @@ export interface HelpRule {
   /** Qué hacer para que sí se pueda. */
   fix: string
 }
+
+/**
+ * Una acción del catálogo, explicada por su EFECTO y no por su nombre
+ * (`HelpActionGlossaryCard`).
+ *
+ * `on`/`off` no son una definición: son la frase concreta de lo que alguien
+ * nota en pantalla con el interruptor puesto o quitado. Es a propósito que las
+ * dos usan el mismo escenario (Ana, en el módulo Usuarios) en cada entrada del
+ * glosario: así se compara una acción con otra sin tener que releer el contexto
+ * cada vez, y se ve de un vistazo que todas siguen la misma regla —encendido
+ * habilita algo puntual, apagado lo bloquea, nunca a medias—.
+ */
+export interface HelpActionExample {
+  /** Código real del catálogo (`sa_actions.code`), para que se reconozca en la matriz. */
+  code: string
+  label: string
+  icon: string
+  /** Qué es, en una frase. Reusa el tooltip real de `ACTION_HINTS` cuando coincide. */
+  what: string
+  on: string
+  off: string
+  /** Se aplica a varios registros de una vez, no a uno solo. */
+  bulk?: boolean
+  /**
+   * El mismo aviso que `actionWarning()` calcula para la matriz real
+   * (`app/utils/permissions.ts`) cuando esta acción es una de las especiales.
+   * Se repite aquí en vez de importar la función porque el glosario es
+   * contenido estático de la guía, no datos que lleguen del catálogo.
+   */
+  warning?: string
+}
